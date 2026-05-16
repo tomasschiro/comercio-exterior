@@ -30,7 +30,7 @@ export default function LoginPage() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
       setError('Email o contraseña incorrectos')
@@ -38,11 +38,13 @@ export default function LoginPage() {
       return
     }
 
-    const { data: perfil } = await supabase
-      .from('perfiles')
-      .select('aprobado')
-      .eq('email', email)
-      .single()
+    // Check approval server-side to avoid RLS issues with the anon key
+    const res = await fetch('/api/check-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: authData.session?.access_token }),
+    })
+    const perfil = await res.json()
 
     if (!perfil?.aprobado) {
       await supabase.auth.signOut()
