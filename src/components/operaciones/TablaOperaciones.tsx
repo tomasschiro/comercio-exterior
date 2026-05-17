@@ -386,8 +386,8 @@ export default function TablaOperaciones({ userEmail }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">CRT</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">SENASA</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Est. SENASA</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">N. Despacho</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Oficialización</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">N. Despacho</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aviso</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nota de entrega</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Liberación</th>
@@ -475,11 +475,11 @@ export default function TablaOperaciones({ userEmail }: Props) {
                         {renderSenasaEstadoCell(op)}
                       </td>
 
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 110 }}>
-                        {renderCell(op, 'despacho')}
-                      </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
                         {renderCell(op, 'oficializacion')}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 110 }}>
+                        {renderCell(op, 'despacho')}
                       </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
                         {renderCell(op, 'aviso')}
