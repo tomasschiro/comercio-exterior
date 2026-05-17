@@ -6,7 +6,8 @@ import type { Operacion } from '@/types/database'
 import ModalNuevaOperacion from './ModalNuevaOperacion'
 import ModalEditarOperacion from './ModalEditarOperacion'
 
-// The 10 fields that count toward progress
+type SenasaEstado = 'pendiente' | 'retenida' | 'liberada' | 'vinculada'
+
 const PROGRESS_FIELDS: Array<keyof Operacion> = [
   'interno', 'recep_doc', 'cliente', 'crt', 'senasa',
   'despacho', 'oficializacion', 'aviso', 'nota_entrega', 'liberacion',
@@ -29,10 +30,24 @@ const FIELD_TYPE: Partial<Record<keyof Operacion, FieldType>> = {
 type CellStatus = 'saving' | 'success' | 'error'
 type EditingCell = { id: number; field: keyof Operacion; value: string }
 
+interface SenasaPopoverState {
+  id: number
+  estado: SenasaEstado
+  vinculacion: string
+  top: number
+  left: number
+}
+
 function formatDate(d: string | null): string {
   if (!d) return '—'
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
+}
+
+function formatDateShort(d: string | null): string {
+  if (!d) return ''
+  const [, m, day] = d.split('-')
+  return `${day}/${m}`
 }
 
 function getRawValue(op: Operacion, field: keyof Operacion): string {
@@ -47,7 +62,6 @@ function getDisplayValue(op: Operacion, field: keyof Operacion): string {
   return v !== null && v !== undefined && v !== '' ? String(v) : '—'
 }
 
-// Simplified 3-state status
 function getEstado(op: Operacion): 'Pendiente' | 'En proceso' | 'Liberado' {
   if (op.liberacion) return 'Liberado'
   const hasData = [
@@ -70,6 +84,13 @@ const ESTADO_COLORS: Record<string, string> = {
   'Pendiente':  'bg-yellow-100 text-yellow-700',
 }
 
+const SENASA_OPCIONES: { value: SenasaEstado; label: string; emoji: string }[] = [
+  { value: 'pendiente', label: 'Pendiente', emoji: '⬜' },
+  { value: 'retenida',  label: 'Retenida',  emoji: '🟡' },
+  { value: 'liberada',  label: 'Liberada',  emoji: '🟢' },
+  { value: 'vinculada', label: 'Vinculada', emoji: '🔵' },
+]
+
 interface Props {
   userEmail?: string
 }
@@ -83,7 +104,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
-  // Prevents onBlur from committing when Enter/Escape already handled it
+  const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
   const suppressBlurRef = useRef(false)
 
   const cargarOperaciones = useCallback(async () => {
@@ -134,7 +155,6 @@ export default function TablaOperaciones({ userEmail }: Props) {
       parsed = value.trim()
     }
 
-    // Optimistic update
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: parsed } : op))
     setEditing(null)
     setCellStatus(id, field, 'saving')
@@ -152,6 +172,43 @@ export default function TablaOperaciones({ userEmail }: Props) {
     } else {
       setCellStatus(id, field, 'success')
       setTimeout(() => setCellStatus(id, field, null), 1000)
+    }
+  }
+
+  function openSenasaPopover(op: Operacion, e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const left = Math.min(rect.left, window.innerWidth - 188)
+    setSenasaPopover({
+      id: op.id,
+      estado: ((op.senasa_estado as SenasaEstado) || 'pendiente'),
+      vinculacion: op.senasa_vinculacion || '',
+      top: rect.bottom + 4,
+      left,
+    })
+  }
+
+  async function saveSenasaEstado() {
+    if (!senasaPopover) return
+    const { id, estado, vinculacion } = senasaPopover
+    const oldOp = operaciones.find(o => o.id === id)
+    if (!oldOp) return
+
+    const updates = {
+      senasa_estado: estado,
+      senasa_vinculacion: estado === 'vinculada' && vinculacion ? vinculacion : null,
+    }
+
+    setOperaciones(prev => prev.map(op => op.id === id ? { ...op, ...updates } : op))
+    setSenasaPopover(null)
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('operaciones')
+      .update(updates)
+      .eq('id', id)
+
+    if (error) {
+      setOperaciones(prev => prev.map(op => op.id === id ? oldOp : op))
     }
   }
 
@@ -200,7 +257,6 @@ export default function TablaOperaciones({ userEmail }: Props) {
               suppressBlurRef.current = false
               return
             }
-            // snapshot editing at blur time so closure is stable
             setEditing(prev => {
               if (prev && prev.id === op.id && prev.field === field) {
                 commitEdit(prev)
@@ -215,7 +271,6 @@ export default function TablaOperaciones({ userEmail }: Props) {
       )
     }
 
-    // Status-based background
     let ringCls = ''
     if (status === 'saving') ringCls = 'bg-gray-50 ring-1 ring-inset ring-gray-300'
     if (status === 'success') ringCls = 'bg-green-50 ring-1 ring-inset ring-green-400'
@@ -233,6 +288,35 @@ export default function TablaOperaciones({ userEmail }: Props) {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         )}
+      </div>
+    )
+  }
+
+  function renderSenasaEstadoCell(op: Operacion) {
+    const estado = (op.senasa_estado as SenasaEstado) || 'pendiente'
+    const vinculacion = op.senasa_vinculacion
+
+    let badge: React.ReactNode
+    if (!estado || estado === 'pendiente') {
+      badge = <span className="text-gray-400">—</span>
+    } else if (estado === 'retenida') {
+      badge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Retenida</span>
+    } else if (estado === 'liberada') {
+      badge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Liberada</span>
+    } else {
+      badge = (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+          Vinculada{vinculacion ? ` ${formatDateShort(vinculacion)}` : ''}
+        </span>
+      )
+    }
+
+    return (
+      <div
+        onClick={e => openSenasaPopover(op, e)}
+        className="flex items-center gap-1 rounded px-1 -mx-1 cursor-pointer min-h-[22px] hover:bg-blue-50 transition-colors"
+      >
+        {badge}
       </div>
     )
   }
@@ -301,6 +385,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Cliente</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">CRT</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">SENASA</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Est. SENASA</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">N. Despacho</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Oficialización</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aviso</th>
@@ -313,7 +398,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -325,7 +410,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
                 </tr>
               ) : filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-16 text-center">
+                  <td colSpan={13} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -384,6 +469,12 @@ export default function TablaOperaciones({ userEmail }: Props) {
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 100 }}>
                         {renderCell(op, 'senasa')}
                       </td>
+
+                      {/* EST. SENASA — popover selector */}
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 110 }}>
+                        {renderSenasaEstadoCell(op)}
+                      </td>
+
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 110 }}>
                         {renderCell(op, 'despacho')}
                       </td>
@@ -400,7 +491,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
                         {renderCell(op, 'liberacion')}
                       </td>
 
-                      {/* Estado badge (computed, not editable) */}
+                      {/* Estado badge */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ESTADO_COLORS[estado]}`}>
                           {estado}
@@ -428,6 +519,61 @@ export default function TablaOperaciones({ userEmail }: Props) {
           </table>
         </div>
       </div>
+
+      {/* EST. SENASA Popover */}
+      {senasaPopover && (
+        <>
+          {/* Backdrop: captures clicks outside the popover */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setSenasaPopover(null)}
+          />
+          {/* Popover card */}
+          <div
+            style={{ position: 'fixed', top: senasaPopover.top, left: senasaPopover.left, zIndex: 50 }}
+            className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-44"
+          >
+            <div className="flex flex-col gap-0.5">
+              {SENASA_OPCIONES.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSenasaPopover(prev => prev ? { ...prev, estado: opt.value } : null)}
+                  className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg transition-colors text-left
+                    ${senasaPopover.estado === opt.value
+                      ? 'bg-gray-900 text-white font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                >
+                  <span className="text-base leading-none">{opt.emoji}</span>
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {senasaPopover.estado === 'vinculada' && (
+              <div className="mt-2 px-1">
+                <input
+                  type="date"
+                  value={senasaPopover.vinculacion}
+                  onChange={e => setSenasaPopover(prev => prev ? { ...prev, vinculacion: e.target.value } : null)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={saveSenasaEstado}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <ModalNuevaOperacion
         open={modalOpen}

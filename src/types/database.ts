@@ -18,6 +18,8 @@ export interface Operacion {
   cliente: string | null
   crt: string | null
   senasa: string | null
+  senasa_estado: string | null
+  senasa_vinculacion: string | null
   despacho: string | null
   oficializacion: string | null
   aviso: string | null

@@ -17,6 +17,8 @@ const EMPTY: NuevaOperacion = {
   cliente: null,
   crt: null,
   senasa: null,
+  senasa_estado: null,
+  senasa_vinculacion: null,
   despacho: null,
   oficializacion: null,
   aviso: null,
