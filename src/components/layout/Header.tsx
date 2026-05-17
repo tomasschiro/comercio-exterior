@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 interface HeaderProps {
@@ -11,12 +11,22 @@ interface HeaderProps {
 
 export default function Header({ email, rol }: HeaderProps) {
   const router = useRouter()
+  const pathname = usePathname()
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  function navClass(href: string) {
+    const active = pathname === href || pathname.startsWith(href + '/')
+    return `px-3 py-1.5 text-sm rounded-lg transition-colors ${
+      active
+        ? 'text-blue-600 bg-blue-50 font-medium'
+        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+    }`
   }
 
   return (
@@ -33,22 +43,19 @@ export default function Header({ email, rol }: HeaderProps) {
             <span className="font-semibold text-gray-900 text-sm">Comercio Exterior</span>
           </div>
 
-          {rol === 'superadmin' && (
-            <nav className="flex items-center gap-1">
-              <Link
-                href="/operaciones"
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Operaciones
-              </Link>
-              <Link
-                href="/admin"
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+          <nav className="flex items-center gap-1">
+            <Link href="/operaciones" className={navClass('/operaciones')}>
+              Tablero
+            </Link>
+            <Link href="/reportes" className={navClass('/reportes')}>
+              Reportes
+            </Link>
+            {rol === 'superadmin' && (
+              <Link href="/admin" className={navClass('/admin')}>
                 Admin
               </Link>
-            </nav>
-          )}
+            )}
+          </nav>
         </div>
 
         <div className="flex items-center gap-4">
