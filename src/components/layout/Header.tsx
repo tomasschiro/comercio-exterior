@@ -51,6 +51,11 @@ export default function Header({ email, rol }: HeaderProps) {
               Reportes
             </Link>
             {rol === 'superadmin' && (
+              <Link href="/maestros" className={navClass('/maestros')}>
+                Maestros
+              </Link>
+            )}
+            {rol === 'superadmin' && (
               <Link href="/admin" className={navClass('/admin')}>
                 Admin
               </Link>

@@ -11,11 +11,29 @@ export interface Perfil {
   created_at: string
 }
 
+export interface Cliente {
+  id: number
+  nombre: string
+  email: string | null
+  telefono: string | null
+  activo: boolean
+  created_at: string
+}
+
+export interface Transporte {
+  id: number
+  nombre: string
+  telefono: string | null
+  activo: boolean
+  created_at: string
+}
+
 export interface Operacion {
   id: number
   interno: number | null
   recep_doc: string | null
   cliente: string | null
+  transporte: string | null
   crt: string | null
   senasa: string | null
   senasa_estado: string | null

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import type { Operacion } from '@/types/database'
+import type { Operacion, Cliente, Transporte } from '@/types/database'
 
 interface Props {
   op: Operacion
@@ -10,21 +10,38 @@ interface Props {
   onSaved: (updated: Operacion) => void
 }
 
+const inputCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+const selectCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white'
+
 export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
-    interno:       op.interno !== null ? String(op.interno) : '',
-    recep_doc:     op.recep_doc     ?? '',
-    cliente:       op.cliente       ?? '',
-    crt:           op.crt           ?? '',
-    senasa:        op.senasa        ?? '',
-    despacho:      op.despacho      ?? '',
+    interno:        op.interno !== null ? String(op.interno) : '',
+    recep_doc:      op.recep_doc      ?? '',
+    cliente:        op.cliente        ?? '',
+    transporte:     op.transporte     ?? '',
+    crt:            op.crt            ?? '',
+    senasa:         op.senasa         ?? '',
+    despacho:       op.despacho       ?? '',
     oficializacion: op.oficializacion ?? '',
-    aviso:         op.aviso         ?? '',
-    nota_entrega:  op.nota_entrega  ?? '',
-    liberacion:    op.liberacion    ?? '',
+    aviso:          op.aviso          ?? '',
+    nota_entrega:   op.nota_entrega   ?? '',
+    liberacion:     op.liberacion     ?? '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [transportes, setTransportes] = useState<Transporte[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    Promise.all([
+      supabase.from('clientes').select('*').eq('activo', true).order('nombre'),
+      supabase.from('transportes').select('*').eq('activo', true).order('nombre'),
+    ]).then(([{ data: c }, { data: t }]) => {
+      setClientes(c ?? [])
+      setTransportes(t ?? [])
+    })
+  }, [])
 
   function handleChange(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -39,6 +56,7 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
       interno:        form.interno.trim()        ? (parseInt(form.interno) || null) : null,
       recep_doc:      form.recep_doc.trim()      || null,
       cliente:        form.cliente.trim()        || null,
+      transporte:     form.transporte.trim()     || null,
       crt:            form.crt.trim()            || null,
       senasa:         form.senasa.trim()         || null,
       despacho:       form.despacho.trim()       || null,
@@ -69,15 +87,12 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={handleBackdrop}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Editar Operación</h2>
@@ -95,7 +110,6 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -114,9 +128,36 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
 
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Cliente</label>
-              <input type="text" value={form.cliente}
+              <select
+                value={form.cliente}
                 onChange={e => handleChange('cliente', e.target.value)}
-                className={inputCls} placeholder="Nombre del cliente" />
+                className={selectCls}
+              >
+                <option value="">— Sin cliente —</option>
+                {clientes.map(c => (
+                  <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                ))}
+                {form.cliente && !clientes.find(c => c.nombre === form.cliente) && (
+                  <option value={form.cliente}>{form.cliente} (actual)</option>
+                )}
+              </select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Transporte</label>
+              <select
+                value={form.transporte}
+                onChange={e => handleChange('transporte', e.target.value)}
+                className={selectCls}
+              >
+                <option value="">— Sin transporte —</option>
+                {transportes.map(t => (
+                  <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                ))}
+                {form.transporte && !transportes.find(t => t.nombre === form.transporte) && (
+                  <option value={form.transporte}>{form.transporte} (actual)</option>
+                )}
+              </select>
             </div>
 
             <div>
