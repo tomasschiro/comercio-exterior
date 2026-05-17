@@ -7,6 +7,7 @@ import ModalNuevaOperacion from './ModalNuevaOperacion'
 import ModalEditarOperacion from './ModalEditarOperacion'
 
 type SenasaEstado = 'pendiente' | 'retenida' | 'liberada' | 'vinculada'
+type Tab = 'mis' | 'todas'
 
 const PROGRESS_FIELDS: Array<keyof Operacion> = [
   'interno', 'recep_doc', 'cliente', 'crt', 'senasa',
@@ -93,12 +94,15 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string; emoji: string }[] =
 
 interface Props {
   userEmail?: string
+  userId?: string
+  userRol?: string
 }
 
-export default function TablaOperaciones({ userEmail }: Props) {
+export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [operaciones, setOperaciones] = useState<Operacion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState<Tab>('mis')
   const [modalOpen, setModalOpen] = useState(false)
   const [editModalOp, setEditModalOp] = useState<Operacion | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -217,6 +221,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
   }
 
   const filtradas = operaciones.filter(op => {
+    if (tab === 'mis' && userId && op.created_by !== userId) return false
     if (!busqueda) return true
     const q = busqueda.toLowerCase()
     return (
@@ -227,6 +232,8 @@ export default function TablaOperaciones({ userEmail }: Props) {
       String(op.interno ?? '').includes(q)
     )
   })
+
+  const totalCols = tab === 'todas' ? 14 : 13
 
   function renderCell(op: Operacion, field: keyof Operacion) {
     const key = `${op.id}-${field}`
@@ -325,11 +332,39 @@ export default function TablaOperaciones({ userEmail }: Props) {
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Operaciones</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {loading ? 'Cargando...' : `${filtradas.length} registro${filtradas.length !== 1 ? 's' : ''}`}
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Operaciones</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {loading ? 'Cargando...' : `${filtradas.length} registro${filtradas.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex rounded-lg border border-gray-200 p-0.5 bg-white">
+            <button
+              type="button"
+              onClick={() => setTab('mis')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                tab === 'mis'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Mis operaciones
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('todas')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                tab === 'todas'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Todas
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -391,6 +426,9 @@ export default function TablaOperaciones({ userEmail }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aviso</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nota de entrega</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Liberación</th>
+                {tab === 'todas' && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Cargado por</th>
+                )}
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Estado</th>
                 <th className="w-10 px-2 py-3" />
               </tr>
@@ -398,7 +436,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={totalCols} className="px-4 py-12 text-center text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -410,7 +448,7 @@ export default function TablaOperaciones({ userEmail }: Props) {
                 </tr>
               ) : filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-16 text-center">
+                  <td colSpan={totalCols} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -491,6 +529,12 @@ export default function TablaOperaciones({ userEmail }: Props) {
                         {renderCell(op, 'liberacion')}
                       </td>
 
+                      {tab === 'todas' && (
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs" style={{ minWidth: 140 }}>
+                          {op.created_by_email ?? '—'}
+                        </td>
+                      )}
+
                       {/* Estado badge */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ESTADO_COLORS[estado]}`}>
@@ -523,12 +567,10 @@ export default function TablaOperaciones({ userEmail }: Props) {
       {/* EST. SENASA Popover */}
       {senasaPopover && (
         <>
-          {/* Backdrop: captures clicks outside the popover */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setSenasaPopover(null)}
           />
-          {/* Popover card */}
           <div
             style={{ position: 'fixed', top: senasaPopover.top, left: senasaPopover.left, zIndex: 50 }}
             className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-44"

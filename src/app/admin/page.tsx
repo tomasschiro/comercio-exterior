@@ -3,9 +3,9 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import Header from '@/components/layout/Header'
-import TablaOperaciones from '@/components/operaciones/TablaOperaciones'
+import AdminPanel from '@/components/admin/AdminPanel'
 
-export default async function OperacionesPage() {
+export default async function AdminPage() {
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -33,13 +33,13 @@ export default async function OperacionesPage() {
     .eq('id', user.id)
     .single()
 
-  const userRol = perfil?.rol ?? 'operador'
+  if (perfil?.rol !== 'superadmin') redirect('/operaciones')
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Header email={user.email} rol={userRol} />
+      <Header email={user.email} rol={perfil.rol} />
       <main className="flex-1 max-w-screen-2xl mx-auto w-full px-6 py-6">
-        <TablaOperaciones userEmail={user.email} userId={user.id} userRol={userRol} />
+        <AdminPanel />
       </main>
     </div>
   )
