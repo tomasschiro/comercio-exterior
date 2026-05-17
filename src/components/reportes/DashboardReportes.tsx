@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import type { Operacion } from '@/types/database'
+import { getEstadoOperacion } from '@/types/database'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -8,8 +10,6 @@ import {
 } from 'recharts'
 
 type TooltipValue = number | string | ReadonlyArray<number | string>
-import type { Operacion } from '@/types/database'
-import { getEstadoOperacion } from '@/types/database'
 
 interface Props {
   operaciones: Operacion[]
@@ -66,6 +66,9 @@ const ESTADO_COLORS: Record<string, string> = {
 }
 
 export default function DashboardReportes({ operaciones }: Props) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   /* ── KPIs ─────────────────────────────────────────────────────────── */
@@ -226,129 +229,141 @@ export default function DashboardReportes({ operaciones }: Props) {
         />
       </div>
 
-      {/* ── Gráficos fila 1 ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Gráficos ─────────────────────────────────────────────────── */}
+      {mounted ? (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Donut */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Distribución por Estado</h2>
-          {operaciones.length === 0 ? (
-            <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={230}>
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  dataKey="value"
+            {/* Donut */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Distribución por Estado</h2>
+              {operaciones.length === 0 ? (
+                <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={230}>
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {donutData.map((_, i) => (
+                        <Cell key={i} fill={DONUT_COLORS[i]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Top 5 clientes — barras horizontales */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Top 5 Clientes</h2>
+              {topClientes.length === 0 ? (
+                <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart
+                    data={topClientes}
+                    layout="vertical"
+                    margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={130}
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Bar dataKey="value" fill={BLUE} radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Estado detallado — barras verticales */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Operaciones por Estado (detalle)</h2>
+              <ResponsiveContainer width="100%" height={210}>
+                <BarChart
+                  data={porEstado}
+                  margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
                 >
-                  {donutData.map((_, i) => (
-                    <Cell key={i} fill={DONUT_COLORS[i]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
-                  contentStyle={{ fontSize: 12 }}
-                />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {porEstado.map((entry) => (
+                      <Cell key={entry.name} fill={ESTADO_COLORS[entry.name] ?? BLUE} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-        {/* Top 5 clientes — barras horizontales */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Top 5 Clientes</h2>
-          {topClientes.length === 0 ? (
-            <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart
-                data={topClientes}
-                layout="vertical"
-                margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={130}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                />
-                <Tooltip
-                  formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
-                  contentStyle={{ fontSize: 12 }}
-                />
-                <Bar dataKey="value" fill={BLUE} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+            {/* Línea: por semana */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+                Operaciones Cargadas por Semana{' '}
+                <span className="text-gray-400 font-normal">(últimas 8)</span>
+              </h2>
+              <ResponsiveContainer width="100%" height={210}>
+                <LineChart
+                  data={porSemana}
+                  margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke={BLUE}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: BLUE }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 h-[280px] animate-pulse">
+              <div className="h-3 bg-gray-100 rounded w-1/3 mb-6" />
+              <div className="h-full bg-gray-50 rounded" />
+            </div>
+          ))}
         </div>
-      </div>
-
-      {/* ── Gráficos fila 2 ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Estado detallado — barras verticales */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Operaciones por Estado (detalle)</h2>
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart
-              data={porEstado}
-              margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-              <Tooltip
-                formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
-                contentStyle={{ fontSize: 12 }}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {porEstado.map((entry) => (
-                  <Cell key={entry.name} fill={ESTADO_COLORS[entry.name] ?? BLUE} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Línea: por semana */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">
-            Operaciones Cargadas por Semana{' '}
-            <span className="text-gray-400 font-normal">(últimas 8)</span>
-          </h2>
-          <ResponsiveContainer width="100%" height={210}>
-            <LineChart
-              data={porSemana}
-              margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-              <Tooltip
-                formatter={(v: TooltipValue | undefined) => [`${v ?? 0} operaciones`, '']}
-                contentStyle={{ fontSize: 12 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={BLUE}
-                strokeWidth={2}
-                dot={{ r: 3, fill: BLUE }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      )}
 
       {/* ── Tablas ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
