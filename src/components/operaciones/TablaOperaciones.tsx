@@ -91,11 +91,10 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
 
 const MONO_STYLE = { fontFamily: 'var(--font-geist-mono, ui-monospace, SFMono-Regular, monospace)', fontSize: 12 }
 
-// Shared input style for inline cell editing
 const CELL_INPUT_STYLE: React.CSSProperties = {
   width: '100%',
-  padding: '3px 6px',
-  fontSize: 13,
+  padding: '2px 4px',
+  fontSize: 12,
   border: '0.5px solid #18181B',
   borderRadius: 4,
   outline: 'none',
@@ -287,7 +286,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           style={{
             ...CELL_INPUT_STYLE,
             ...(extraStyle ?? {}),
-            minWidth: inputType === 'date' ? 130 : 72,
+            minWidth: inputType === 'date' ? 110 : 60,
           }}
         />
       )
@@ -310,28 +309,33 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           alignItems: 'center',
           gap: 4,
           borderRadius: 4,
-          padding: '2px 4px',
-          margin: '0 -4px',
+          padding: '2px 3px',
+          margin: '0 -3px',
           cursor: 'text',
-          minHeight: 22,
+          minHeight: 20,
           border: status ? `0.5px solid ${borderColor}` : 'none',
           background: bgColor,
           transition: 'background 80ms',
+          overflow: 'hidden',
           ...(extraStyle ?? {}),
         }}
         className={!status ? 'cell-hover' : ''}
       >
         <span
-          className="truncate"
           style={{
             color: isEmpty ? '#D4D4D4' : undefined,
             fontSize: 'inherit',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+            flex: 1,
           }}
         >
           {displayValue}
         </span>
         {status === 'saving' && (
-          <svg className="animate-spin" style={{ width: 11, height: 11, color: '#9C9A94', flexShrink: 0 }} fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin" style={{ width: 10, height: 10, color: '#9C9A94', flexShrink: 0 }} fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
@@ -349,20 +353,20 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       badge = <span style={{ color: '#D4D4D4' }}>—</span>
     } else if (estado === 'retenida') {
       badge = (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#FEF3C7', color: '#D97706' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#FEF3C7', color: '#D97706' }}>
           Retenida
         </span>
       )
     } else if (estado === 'liberada') {
       badge = (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#DCFCE7', color: '#16A34A' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#DCFCE7', color: '#16A34A' }}>
           Liberada
         </span>
       )
     } else {
       badge = (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#EFF6FF', color: '#2563EB' }}>
-          Vinculada{vinculacion ? ` ${formatDateShort(vinculacion)}` : ''}
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#EFF6FF', color: '#2563EB' }}>
+          Vinc.{vinculacion ? ` ${formatDateShort(vinculacion)}` : ''}
         </span>
       )
     }
@@ -370,7 +374,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     return (
       <div
         onClick={e => openSenasaPopover(op, e)}
-        style={{ display: 'flex', alignItems: 'center', borderRadius: 4, padding: '2px 4px', margin: '0 -4px', cursor: 'pointer', minHeight: 22, transition: 'background 80ms' }}
+        style={{ display: 'flex', alignItems: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20, transition: 'background 80ms', overflow: 'hidden' }}
         className="cell-hover"
       >
         {badge}
@@ -380,13 +384,15 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   const thStyle: React.CSSProperties = {
     textAlign: 'left',
-    padding: '0 16px 10px',
-    fontSize: 11,
+    padding: '0 4px 10px',
+    fontSize: 12,
     fontWeight: 500,
     textTransform: 'uppercase',
-    letterSpacing: '0.08em',
+    letterSpacing: '0.06em',
     color: '#9C9A94',
     whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   }
 
   return (
@@ -524,28 +530,47 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           </div>
         )}
 
-        {/* Table — directly on background, no card wrapper */}
+        {/* Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#0D0D0D' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#0D0D0D', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: 60 }} />   {/* Interno */}
+              <col style={{ width: 80 }} />   {/* Recep. */}
+              <col style={{ width: 100 }} />  {/* Cliente */}
+              <col style={{ width: 80 }} />   {/* OC */}
+              <col style={{ width: 90 }} />   {/* Factura */}
+              <col style={{ width: 90 }} />   {/* CRT */}
+              <col style={{ width: 85 }} />   {/* Ped.Fondos */}
+              <col style={{ width: 80 }} />   {/* SENASA */}
+              <col style={{ width: 85 }} />   {/* Est.SENASA */}
+              <col style={{ width: 85 }} />   {/* Ofic. */}
+              <col style={{ width: 90 }} />   {/* N.Desp. */}
+              <col style={{ width: 70 }} />   {/* Aviso */}
+              <col style={{ width: 75 }} />   {/* Nota Ent. */}
+              <col style={{ width: 80 }} />   {/* Liberación */}
+              {tab === 'todas' && <col style={{ width: 90 }} />}  {/* Cargado por */}
+              <col style={{ width: 85 }} />   {/* Estado */}
+              <col style={{ width: 36 }} />   {/* lápiz */}
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E8E5DE' }}>
                 <th style={thStyle}>Interno</th>
-                <th style={thStyle}>Recep. Doc</th>
+                <th style={thStyle}>Recep.</th>
                 <th style={thStyle}>Cliente</th>
-                <th style={thStyle}>Factura</th>
                 <th style={thStyle}>OC</th>
+                <th style={thStyle}>Factura</th>
                 <th style={thStyle}>CRT</th>
+                <th style={thStyle}>Ped.Fondos</th>
                 <th style={thStyle}>SENASA</th>
-                <th style={thStyle}>Est. SENASA</th>
-                <th style={thStyle}>Oficialización</th>
-                <th style={thStyle}>N. Despacho</th>
-                <th style={thStyle}>Fecha Ped. Fondos</th>
+                <th style={thStyle}>Est.SENASA</th>
+                <th style={thStyle}>Ofic.</th>
+                <th style={thStyle}>N.Desp.</th>
                 <th style={thStyle}>Aviso</th>
-                <th style={thStyle}>Nota entrega</th>
+                <th style={thStyle}>Nota Ent.</th>
                 <th style={thStyle}>Liberación</th>
                 {tab === 'todas' && <th style={thStyle}>Cargado por</th>}
                 <th style={thStyle}>Estado</th>
-                <th style={{ width: 40, padding: '0 8px 10px' }} />
+                <th style={{ width: 36, padding: '0 4px 10px' }} />
               </tr>
             </thead>
             <tbody>
@@ -599,15 +624,15 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                     <tr
                       key={op.id}
                       className="table-row-hover"
-                      style={{ borderBottom: '0.5px solid #E8E5DE', height: 44 }}
+                      style={{ borderBottom: '0.5px solid #E8E5DE', height: 36 }}
                     >
                       {/* Interno + progress */}
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 90 }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
                         <div style={{ fontWeight: 500, ...MONO_STYLE }}>
                           {renderCell(op, 'interno', MONO_STYLE)}
                         </div>
                         <div
-                          style={{ height: 2, width: '100%', background: '#E8E5DE', borderRadius: 99, marginTop: 4 }}
+                          style={{ height: 2, width: '100%', background: '#E8E5DE', borderRadius: 99, marginTop: 2 }}
                           title={`${done} de 10 completados`}
                         >
                           <div
@@ -622,67 +647,69 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         </div>
                       </td>
 
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
                         {renderCell(op, 'recep_doc')}
                       </td>
-                      <td style={{ padding: '0 16px', maxWidth: 200 }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
                         {renderCell(op, 'cliente')}
                       </td>
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
-                        {renderCell(op, 'factura', MONO_STYLE)}
-                      </td>
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 88, ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'oc', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'factura', MONO_STYLE)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'crt', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                        {renderCell(op, 'fecha_pedido_fondos')}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'senasa', MONO_STYLE)}
                       </td>
 
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
                         {renderSenasaEstadoCell(op)}
                       </td>
 
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
                         {renderCell(op, 'oficializacion')}
                       </td>
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 108, ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'despacho', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 120 }}>
-                        {renderCell(op, 'fecha_pedido_fondos')}
-                      </td>
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
                         {renderCell(op, 'aviso')}
                       </td>
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
                         {renderCell(op, 'nota_entrega')}
                       </td>
-                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
                         {renderCell(op, 'liberacion')}
                       </td>
 
                       {tab === 'todas' && (
-                        <td style={{ padding: '0 16px', color: '#9C9A94', whiteSpace: 'nowrap', minWidth: 140, fontSize: 12 }}>
-                          {op.created_by_email ?? '—'}
+                        <td style={{ padding: '0 4px', color: '#9C9A94', overflow: 'hidden', fontSize: 11 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            {op.created_by_email ?? '—'}
+                          </span>
                         </td>
                       )}
 
-                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, ...estadoStyle }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 500, ...estadoStyle }}>
                           {estado}
                         </span>
                       </td>
 
-                      <td style={{ padding: '0 8px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '0 2px', overflow: 'hidden' }}>
                         <button
                           onClick={() => setEditModalOp(op)}
                           title="Editar"
                           className="edit-btn"
                           style={{
-                            padding: 6,
+                            padding: 5,
                             border: 'none',
                             background: 'transparent',
                             cursor: 'pointer',
@@ -694,7 +721,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                             transition: 'opacity 100ms, background 100ms',
                           }}
                         >
-                          <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
