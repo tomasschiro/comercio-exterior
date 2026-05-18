@@ -3,22 +3,49 @@
 @tailwind utilities;
 
 :root {
-  --bg: #FAFAF8;
-  --surface: #FFFFFF;
-  --border: #E8E5DE;
-  --text-primary: #0D0D0D;
-  --text-secondary: #6B6860;
-  --text-tertiary: #9C9A94;
-  --accent: #18181B;
-  --accent-hover: #27272A;
-  --success: #16A34A;
-  --success-bg: #DCFCE7;
-  --warning: #D97706;
-  --warning-bg: #FEF3C7;
-  --info: #2563EB;
-  --info-bg: #EFF6FF;
-  --error: #DC2626;
-  --error-bg: #FEF2F2;
+  --bg:        #FAF7EE;
+  --surface:   #FFFFFF;
+  --surface-2: #F2ECDC;
+  --surface-3: #E8DFC5;
+  --ink-1: #1F1B14;
+  --ink-2: #4A4332;
+  --ink-3: #7A7158;
+  --ink-4: #ADA482;
+  --line:  #E8DFC5;
+  --line-strong: #D6C9A0;
+  --accent:      #1D4ED8;
+  --accent-2:    #1E40AF;
+  --accent-soft: #EDF1FF;
+  --ok:       #166534;
+  --ok-bg:    #E1F1D6;
+  --warn:     #92400E;
+  --warn-bg:  #FCEBC4;
+  --bad:      #991B1B;
+  --bad-bg:   #FBDDD4;
+  --info:     #1E40AF;
+  --info-bg:  #D6E1FB;
+  --neutral-bg: #ECE5D2;
+  --row-hover: #FBF7E8;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05);
+  --shadow-md: 0 2px 4px rgba(31,27,20,.05), 0 8px 24px rgba(31,27,20,.08);
+  --shadow-lg: 0 12px 32px rgba(31,27,20,.14), 0 4px 8px rgba(31,27,20,.08);
+
+  /* legacy compat */
+  --border: #E8DFC5;
+  --text-primary: #1F1B14;
+  --text-secondary: #7A7158;
+  --text-tertiary: #ADA482;
+  --accent-color: #1F1B14;
+  --success: #166534;
+  --success-bg: #E1F1D6;
+  --warning: #92400E;
+  --warning-bg: #FCEBC4;
+  --error: #991B1B;
+  --error-bg: #FBDDD4;
+  --info-color: #1E40AF;
+  --info-bg-color: #D6E1FB;
 }
 
 *, *::before, *::after {
@@ -33,9 +60,9 @@ html {
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--text-primary);
+  color: var(--ink-1);
 }
 
 ::selection {
-  background: rgba(13, 13, 13, 0.1);
+  background: rgba(29,78,216,0.12);
 }

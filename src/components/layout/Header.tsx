@@ -32,10 +32,10 @@ export default function Header({ email, rol }: HeaderProps) {
     <header
       style={{
         height: 48,
-        background: 'rgba(255,255,255,0.85)',
+        background: 'rgba(250,247,238,0.92)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '0.5px solid #E8E5DE',
+        borderBottom: '1px solid #E8DFC5',
         position: 'sticky',
         top: 0,
         zIndex: 40,
@@ -55,8 +55,8 @@ export default function Header({ email, rol }: HeaderProps) {
         {/* Left: logo + nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, background: '#0D0D0D', borderRadius: 2, flexShrink: 0 }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+            <div style={{ width: 8, height: 8, background: '#1F1B14', borderRadius: 2, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1F1B14', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
               R.M.S Comercio Exterior
             </span>
           </div>
@@ -64,7 +64,7 @@ export default function Header({ email, rol }: HeaderProps) {
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {[
               { href: '/dashboard', label: 'Inicio' },
-            { href: '/operaciones', label: 'Operaciones' },
+              { href: '/operaciones', label: 'Operaciones' },
               { href: '/reportes', label: 'Reportes' },
               ...(rol === 'superadmin' ? [{ href: '/maestros', label: 'Maestros' }] : []),
               ...(rol === 'superadmin' ? [{ href: '/admin', label: 'Admin' }] : []),
@@ -78,8 +78,8 @@ export default function Header({ email, rol }: HeaderProps) {
                   borderRadius: 6,
                   textDecoration: 'none',
                   transition: 'background 100ms, color 100ms',
-                  color: isActive(href) ? '#0D0D0D' : '#6B6860',
-                  background: isActive(href) ? '#F4F4F5' : 'transparent',
+                  color: isActive(href) ? '#1F1B14' : '#7A7158',
+                  background: isActive(href) ? '#F2ECDC' : 'transparent',
                   fontWeight: isActive(href) ? 500 : 400,
                   whiteSpace: 'nowrap',
                 }}
@@ -98,7 +98,7 @@ export default function Header({ email, rol }: HeaderProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: '#F4F4F5',
+                background: '#F2ECDC',
                 borderRadius: 20,
                 padding: '3px 10px 3px 3px',
               }}
@@ -107,7 +107,7 @@ export default function Header({ email, rol }: HeaderProps) {
                 style={{
                   width: 22,
                   height: 22,
-                  background: '#18181B',
+                  background: '#1F1B14',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -124,7 +124,7 @@ export default function Header({ email, rol }: HeaderProps) {
               <span
                 style={{
                   fontSize: 12,
-                  color: '#6B6860',
+                  color: '#7A7158',
                   maxWidth: 160,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -143,12 +143,12 @@ export default function Header({ email, rol }: HeaderProps) {
               border: 'none',
               cursor: 'pointer',
               fontSize: 13,
-              color: '#9C9A94',
+              color: '#ADA482',
               padding: '4px 0',
               transition: 'color 100ms',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#0D0D0D')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9C9A94')}
+            onMouseEnter={e => (e.currentTarget.style.color = '#1F1B14')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#ADA482')}
           >
             Salir
           </button>
