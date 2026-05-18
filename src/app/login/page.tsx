@@ -82,7 +82,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/operaciones')
+    router.push('/dashboard')
     router.refresh()
   }
 
