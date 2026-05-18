@@ -227,8 +227,8 @@ export default async function DashboardPage() {
                           </span>
                         </td>
                         <td style={{ padding: '0 16px' }}>
-                          <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, color: op.despacho ? '#0D0D0D' : '#D4D4D4' }}>
-                            {op.despacho ?? '—'}
+                          <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, color: op.factura ? '#0D0D0D' : '#D4D4D4' }}>
+                            {op.factura ?? '—'}
                           </span>
                         </td>
                         <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>

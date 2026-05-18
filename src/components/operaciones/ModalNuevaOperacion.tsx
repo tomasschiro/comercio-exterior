@@ -16,6 +16,9 @@ const EMPTY: NuevaOperacion = {
   recep_doc: null,
   cliente: null,
   transporte: null,
+  factura: null,
+  oc: null,
+  fecha_pedido_fondos: null,
   crt: null,
   senasa: null,
   senasa_estado: null,
@@ -315,6 +318,24 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
                     </svg>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>Factura</label>
+                <input type="text" value={form.factura ?? ''} onChange={e => handleChange('factura', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº factura" />
+              </div>
+
+              <div>
+                <label style={labelStyle}>OC</label>
+                <input type="text" value={form.oc ?? ''} onChange={e => handleChange('oc', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº OC del cliente" />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Fecha pedido fondos</label>
+                <input type="date" value={form.fecha_pedido_fondos ?? ''} onChange={e => handleChange('fecha_pedido_fondos', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
 
               <div>

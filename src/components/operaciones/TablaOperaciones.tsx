@@ -16,16 +16,19 @@ const PROGRESS_FIELDS: Array<keyof Operacion> = [
 
 type FieldType = 'text' | 'date' | 'number'
 const FIELD_TYPE: Partial<Record<keyof Operacion, FieldType>> = {
-  interno:        'number',
-  recep_doc:      'date',
-  cliente:        'text',
-  crt:            'text',
-  senasa:         'text',
-  despacho:       'text',
-  oficializacion: 'date',
-  aviso:          'date',
-  nota_entrega:   'date',
-  liberacion:     'date',
+  interno:             'number',
+  recep_doc:           'date',
+  cliente:             'text',
+  factura:             'text',
+  oc:                  'text',
+  crt:                 'text',
+  senasa:              'text',
+  despacho:            'text',
+  oficializacion:      'date',
+  fecha_pedido_fondos: 'date',
+  aviso:               'date',
+  nota_entrega:        'date',
+  liberacion:          'date',
 }
 
 type CellStatus = 'saving' | 'success' | 'error'
@@ -242,7 +245,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     )
   })
 
-  const totalCols = tab === 'todas' ? 14 : 13
+  const totalCols = tab === 'todas' ? 17 : 16
 
   function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
@@ -529,11 +532,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <th style={thStyle}>Interno</th>
                 <th style={thStyle}>Recep. Doc</th>
                 <th style={thStyle}>Cliente</th>
+                <th style={thStyle}>Factura</th>
+                <th style={thStyle}>OC</th>
                 <th style={thStyle}>CRT</th>
                 <th style={thStyle}>SENASA</th>
                 <th style={thStyle}>Est. SENASA</th>
                 <th style={thStyle}>Oficialización</th>
                 <th style={thStyle}>N. Despacho</th>
+                <th style={thStyle}>Fecha Ped. Fondos</th>
                 <th style={thStyle}>Aviso</th>
                 <th style={thStyle}>Nota entrega</th>
                 <th style={thStyle}>Liberación</th>
@@ -623,6 +629,12 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         {renderCell(op, 'cliente')}
                       </td>
                       <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'factura', MONO_STYLE)}
+                      </td>
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 88, ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'oc', MONO_STYLE)}
+                      </td>
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'crt', MONO_STYLE)}
                       </td>
                       <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
@@ -638,6 +650,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                       </td>
                       <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 108, ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'despacho', MONO_STYLE)}
+                      </td>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 120 }}>
+                        {renderCell(op, 'fecha_pedido_fondos')}
                       </td>
                       <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'aviso')}

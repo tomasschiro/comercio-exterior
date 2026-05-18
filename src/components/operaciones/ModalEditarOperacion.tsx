@@ -49,17 +49,20 @@ function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
 
 export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
-    interno:        op.interno !== null ? String(op.interno) : '',
-    recep_doc:      op.recep_doc      ?? '',
-    cliente:        op.cliente        ?? '',
-    transporte:     op.transporte     ?? '',
-    crt:            op.crt            ?? '',
-    senasa:         op.senasa         ?? '',
-    despacho:       op.despacho       ?? '',
-    oficializacion: op.oficializacion ?? '',
-    aviso:          op.aviso          ?? '',
-    nota_entrega:   op.nota_entrega   ?? '',
-    liberacion:     op.liberacion     ?? '',
+    interno:             op.interno !== null ? String(op.interno) : '',
+    recep_doc:           op.recep_doc           ?? '',
+    cliente:             op.cliente             ?? '',
+    transporte:          op.transporte          ?? '',
+    factura:             op.factura             ?? '',
+    oc:                  op.oc                  ?? '',
+    fecha_pedido_fondos: op.fecha_pedido_fondos ?? '',
+    crt:                 op.crt                 ?? '',
+    senasa:              op.senasa              ?? '',
+    despacho:            op.despacho            ?? '',
+    oficializacion:      op.oficializacion      ?? '',
+    aviso:               op.aviso               ?? '',
+    nota_entrega:        op.nota_entrega        ?? '',
+    liberacion:          op.liberacion          ?? '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -87,17 +90,20 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
     setLoading(true)
 
     const updates = {
-      interno:        form.interno.trim()        ? (parseInt(form.interno) || null) : null,
-      recep_doc:      form.recep_doc.trim()      || null,
-      cliente:        form.cliente.trim()        || null,
-      transporte:     form.transporte.trim()     || null,
-      crt:            form.crt.trim()            || null,
-      senasa:         form.senasa.trim()         || null,
-      despacho:       form.despacho.trim()       || null,
-      oficializacion: form.oficializacion.trim() || null,
-      aviso:          form.aviso.trim()          || null,
-      nota_entrega:   form.nota_entrega.trim()   || null,
-      liberacion:     form.liberacion.trim()     || null,
+      interno:             form.interno.trim()             ? (parseInt(form.interno) || null) : null,
+      recep_doc:           form.recep_doc.trim()           || null,
+      cliente:             form.cliente.trim()             || null,
+      transporte:          form.transporte.trim()          || null,
+      factura:             form.factura.trim()             || null,
+      oc:                  form.oc.trim()                  || null,
+      fecha_pedido_fondos: form.fecha_pedido_fondos.trim() || null,
+      crt:                 form.crt.trim()                 || null,
+      senasa:              form.senasa.trim()              || null,
+      despacho:            form.despacho.trim()            || null,
+      oficializacion:      form.oficializacion.trim()      || null,
+      aviso:               form.aviso.trim()               || null,
+      nota_entrega:        form.nota_entrega.trim()        || null,
+      liberacion:          form.liberacion.trim()          || null,
     }
 
     const supabase = createClient()
@@ -194,6 +200,24 @@ export default function ModalEditarOperacion({ op, onClose, onSaved }: Props) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Factura</label>
+              <input type="text" value={form.factura} onChange={e => handleChange('factura', e.target.value)}
+                style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº factura" />
+            </div>
+
+            <div>
+              <label style={labelStyle}>OC</label>
+              <input type="text" value={form.oc} onChange={e => handleChange('oc', e.target.value)}
+                style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº OC del cliente" />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Fecha pedido fondos</label>
+              <input type="date" value={form.fecha_pedido_fondos} onChange={e => handleChange('fecha_pedido_fondos', e.target.value)}
+                style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             </div>
 
             <div>

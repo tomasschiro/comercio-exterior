@@ -34,6 +34,9 @@ export interface Operacion {
   recep_doc: string | null
   cliente: string | null
   transporte: string | null
+  factura: string | null
+  oc: string | null
+  fecha_pedido_fondos: string | null
   crt: string | null
   senasa: string | null
   senasa_estado: string | null
