@@ -443,7 +443,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   const TH: React.CSSProperties = {
-    textAlign: 'center', padding: '0 6px 10px', fontSize: 10.5, fontWeight: 500,
+    textAlign: 'center', padding: '0 6px 8px', fontSize: 10.5, fontWeight: 500,
     textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9CA3AF',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   }
@@ -465,6 +465,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .row-h:hover { background: ${ROW_HOVER} !important; }
         .row-h:hover .act-btn { opacity: 1 !important; }
         .act-btn:hover { background: rgba(31,27,20,.07) !important; color: #1F1B14 !important; }
+        .interno-link { cursor: pointer; }
+        .interno-link:hover { text-decoration: underline; text-underline-offset: 2px; }
         .st-interno  { position: sticky; left: 3px;   background: ${BG}; z-index: 2; }
         .st-cliente  { position: sticky; left: 125px; background: ${BG}; z-index: 2; }
         .st-action   { position: sticky; right: 0px;  background: ${BG}; z-index: 2; }
@@ -477,8 +479,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .tab-inner { background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; transition: color 100ms; }
         .chip-btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 500; border: 1px solid #E8DFC5; cursor: pointer; transition: background 100ms, border-color 100ms; background: transparent; color: #7A7158; }
         .chip-btn:hover { background: #F2ECDC; }
-        .chip-active-warn { background: #FEF3C7 !important; border-color: #FCD34D !important; color: #92400E !important; }
-        .chip-active-bad  { background: #FEE2E2 !important; border-color: #FCA5A5 !important; color: #991B1B !important; }
+        .chip-active-warn { background: #EDEBE4 !important; border-color: #ADA482 !important; color: #4A4332 !important; font-weight: 600 !important; }
+        .chip-active-bad  { background: #EDEBE4 !important; border-color: #ADA482 !important; color: #4A4332 !important; font-weight: 600 !important; }
         .toolbar-btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 400; border: 1px solid #E8DFC5; cursor: pointer; background: transparent; color: #7A7158; transition: background 80ms; }
         .toolbar-btn:hover { background: #F2ECDC; }
         .pipe { width: 1px; height: 18px; background: #E8DFC5; margin: 0 2px; flex-shrink: 0; }
@@ -743,18 +745,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   const dias = getDiasEnEtapa(op)
 
                   return (
-                    <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EEEAE3', height: 36 }}>
+                    <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EEEAE3', height: 34 }}>
 
                       {/* Stripe */}
                       <td style={{ padding: 0, width: 3, background: stripe ?? 'transparent' }} />
 
                       {/* Interno */}
                       <td style={{ padding: '0 4px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
-                        <div style={{ fontWeight: 600, color: atrasada ? '#EF4444' : '#1D4ED8', ...MONO, lineHeight: 1.2 }}>
-                          {renderCell(op, 'interno', { ...MONO, textAlign: 'left', justifyContent: 'flex-start', color: atrasada ? '#EF4444' : '#1D4ED8', fontWeight: 600 })}
+                        <div
+                          className="interno-link"
+                          onClick={() => setPanelOp(op)}
+                          style={{ fontWeight: 600, color: atrasada ? '#EF4444' : '#1D4ED8', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                        >
+                          {op.interno ?? '—'}
                         </div>
                         {atrasada && (
-                          <div style={{ fontSize: 11, color: '#EF4444', marginTop: 1, textAlign: 'left', paddingLeft: 3 }} title={`${dias} días sin avance`}>
+                          <div style={{ fontSize: 11, color: '#EF4444', marginTop: 1, textAlign: 'left' }} title={`${dias} días sin avance`}>
                             {dias}d
                           </div>
                         )}
