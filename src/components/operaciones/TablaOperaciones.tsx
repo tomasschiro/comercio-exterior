@@ -31,18 +31,21 @@ type CellStatus = 'saving' | 'success' | 'error'
 type EditingCell = { id: number; field: keyof Operacion; value: string }
 
 interface SenasaPopoverState {
-  id: number
-  estado: SenasaEstado
-  vinculacion: string
-  top: number
-  left: number
+  id: number; estado: SenasaEstado; vinculacion: string; top: number; left: number
+}
+interface CanalPopoverState {
+  id: number; canal: string | null; top: number; left: number
 }
 
-interface CanalPopoverState {
-  id: number
-  canal: string | null
-  top: number
-  left: number
+const PAGE_SIZE = 15
+const BG = '#FAF9F6'
+const ROW_HOVER = '#EEE9DF'
+
+function getTimeAgo(date: Date): string {
+  const mins = Math.floor((Date.now() - date.getTime()) / 60000)
+  if (mins < 1) return 'hace un momento'
+  if (mins === 1) return 'hace 1 min'
+  return `hace ${mins} min`
 }
 
 function formatDate(d: string | null): string {
@@ -82,13 +85,13 @@ function getDiasEnEtapa(op: Operacion): number {
 
 function isAtrasada(op: Operacion): boolean {
   if (op.liberacion) return false
-  return getDiasEnEtapa(op) > 5
+  return getDiasEnEtapa(op) > 10
 }
 
 function getStripeColor(op: Operacion): string | null {
-  if (op.liberacion) return '#166534'
-  if (op.senasa_estado === 'retenida') return '#991B1B'
-  if (isAtrasada(op)) return '#D97706'
+  if (op.liberacion) return null
+  if (op.senasa_estado === 'retenida') return '#F59E0B'
+  if (isAtrasada(op)) return '#EF4444'
   return null
 }
 
@@ -137,7 +140,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
   const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
   const [canalPopover, setCanalPopover] = useState<CanalPopoverState | null>(null)
+  const [page, setPage] = useState(1)
+  const [loadedAt, setLoadedAt] = useState<Date>(new Date())
+  const [timeAgoStr, setTimeAgoStr] = useState('hace un momento')
   const suppressBlurRef = useRef(false)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
@@ -148,11 +155,37 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       .select('*')
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
-    else setOperaciones(data || [])
+    else {
+      setOperaciones(data || [])
+      const now = new Date()
+      setLoadedAt(now)
+      setTimeAgoStr(getTimeAgo(now))
+    }
     setLoading(false)
   }, [])
 
   useEffect(() => { cargarOperaciones() }, [cargarOperaciones])
+
+  useEffect(() => {
+    const interval = setInterval(() => setTimeAgoStr(getTimeAgo(loadedAt)), 60000)
+    return () => clearInterval(interval)
+  }, [loadedAt])
+
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      if (!isInput) {
+        if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModalOpen(true) }
+        if (e.key === '/') { e.preventDefault(); searchRef.current?.focus() }
+      }
+      if (e.key === 'Escape') { searchRef.current?.blur() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda])
 
   function setCellStatus(id: number, field: string, status: CellStatus | null) {
     const key = `${id}-${field}`
@@ -172,25 +205,17 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     const { id, field, value } = cell
     const oldOp = operaciones.find(o => o.id === id)
     if (!oldOp) return
-
     const oldValue = oldOp[field]
     let parsed: string | number | null
-    if (value.trim() === '') {
-      parsed = null
-    } else if (field === 'interno') {
-      parsed = parseInt(value) || null
-    } else {
-      parsed = value.trim()
-    }
-
+    if (value.trim() === '') { parsed = null }
+    else if (field === 'interno') { parsed = parseInt(value) || null }
+    else { parsed = value.trim() }
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: parsed } : op))
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: parsed } : null)
     setEditing(null)
     setCellStatus(id, field, 'saving')
-
     const supabase = createClient()
     const { error } = await supabase.from('operaciones').update({ [field]: parsed }).eq('id', id)
-
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: oldValue } : op))
       if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: oldValue } : null)
@@ -242,34 +267,18 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   async function handlePanelSave(updated: Operacion) {
     const oldOp = operaciones.find(o => o.id === updated.id)
     if (!oldOp) return
-
     setOperaciones(prev => prev.map(op => op.id === updated.id ? updated : op))
     setPanelOp(updated)
-
     const supabase = createClient()
-    const { error } = await supabase
-      .from('operaciones')
-      .update({
-        interno: updated.interno,
-        recep_doc: updated.recep_doc,
-        cliente: updated.cliente,
-        transporte: updated.transporte,
-        factura: updated.factura,
-        oc: updated.oc,
-        fecha_pedido_fondos: updated.fecha_pedido_fondos,
-        crt: updated.crt,
-        senasa: updated.senasa,
-        senasa_estado: updated.senasa_estado,
-        senasa_vinculacion: updated.senasa_vinculacion,
-        canal: updated.canal,
-        despacho: updated.despacho,
-        oficializacion: updated.oficializacion,
-        aviso: updated.aviso,
-        nota_entrega: updated.nota_entrega,
-        liberacion: updated.liberacion,
-      })
-      .eq('id', updated.id)
-
+    const { error } = await supabase.from('operaciones').update({
+      interno: updated.interno, recep_doc: updated.recep_doc, cliente: updated.cliente,
+      transporte: updated.transporte, factura: updated.factura, oc: updated.oc,
+      fecha_pedido_fondos: updated.fecha_pedido_fondos, crt: updated.crt,
+      senasa: updated.senasa, senasa_estado: updated.senasa_estado,
+      senasa_vinculacion: updated.senasa_vinculacion, canal: updated.canal,
+      despacho: updated.despacho, oficializacion: updated.oficializacion,
+      aviso: updated.aviso, nota_entrega: updated.nota_entrega, liberacion: updated.liberacion,
+    }).eq('id', updated.id)
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === updated.id ? oldOp : op))
       setPanelOp(oldOp)
@@ -279,7 +288,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   const pendientes = operaciones.filter(op => !op.liberacion)
   const liberadas  = operaciones.filter(op => !!op.liberacion)
-
   const base = section === 'pendientes' ? pendientes : liberadas
 
   const filtradas = base.filter(op => {
@@ -300,22 +308,21 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     return true
   })
 
+  const misCount = userId ? base.filter(op => op.created_by === userId).length : 0
   const atrasadasCount = base.filter(isAtrasada).length
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
-  const totalCols = innerTab === 'todas' ? 19 : 18  // stripe + 17/16 + action
+  const totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE))
+  const paginated = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalCols = innerTab === 'todas' ? 19 : 18
 
   function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
     const status = cellStates[key]
     const isEditingCell = editing?.id === op.id && editing?.field === field
     const inputType = FIELD_TYPE[field] ?? 'text'
-
     if (isEditingCell) {
       return (
-        <input
-          autoFocus
-          type={inputType}
-          value={editing.value}
+        <input autoFocus type={inputType} value={editing.value}
           onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
@@ -329,21 +336,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         />
       )
     }
-
     const displayValue = getDisplayValue(op, field)
     const isEmpty = displayValue === '—'
-    let borderColor = 'transparent'
-    let bgColor = 'transparent'
-    if (status === 'saving')  { borderColor = '#E8DFC5'; bgColor = 'transparent' }
+    let borderColor = 'transparent'; let bgColor = 'transparent'
+    if (status === 'saving')  { borderColor = '#E8DFC5' }
     if (status === 'success') { borderColor = '#166534'; bgColor = '#E1F1D6' }
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
-
     return (
-      <div
-        onClick={() => startEdit(op, field)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }}
-        className={!status ? 'cell-hover' : ''}
-      >
+      <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }} className={!status ? 'cell-hover' : ''}>
         <span style={{ color: isEmpty ? '#C4B89A' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
           {displayValue}
         </span>
@@ -362,13 +362,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     const status = cellStates[key]
     const isEditingCell = editing?.id === op.id && editing?.field === field
     const inputType = FIELD_TYPE[field] ?? 'text'
-
     if (isEditingCell) {
       return (
-        <input
-          autoFocus
-          type={inputType}
-          value={editing.value}
+        <input autoFocus type={inputType} value={editing.value}
           onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
@@ -382,21 +378,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         />
       )
     }
-
     const displayValue = getDisplayValue(op, field)
     const isEmpty = displayValue === '—'
-    let borderColor = 'transparent'
-    let bgColor = 'transparent'
-    if (status === 'saving')  { borderColor = '#E8DFC5'; bgColor = 'transparent' }
+    let borderColor = 'transparent'; let bgColor = 'transparent'
+    if (status === 'saving')  { borderColor = '#E8DFC5' }
     if (status === 'success') { borderColor = '#166534'; bgColor = '#E1F1D6' }
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
-
     return (
-      <div
-        onClick={() => startEdit(op, field)}
-        style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }}
-        className={!status ? 'cell-hover' : ''}
-      >
+      <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }} className={!status ? 'cell-hover' : ''}>
         <span style={{ color: isEmpty ? '#C4B89A' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {displayValue}
         </span>
@@ -432,67 +421,84 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   function renderCanalCell(op: Operacion) {
     const canal = op.canal
-    const CANAL_MAP: Record<string, { label: string; bg: string; color: string }> = {
-      V: { label: 'Verde',   bg: '#E1F1D6', color: '#166534' },
-      R: { label: 'Rojo',    bg: '#FBDDD4', color: '#991B1B' },
-      N: { label: 'Naranja', bg: '#FDE6CB', color: '#9A3412' },
-      A: { label: 'Amarillo',bg: '#FCEBC4', color: '#92400E' },
+    const CANAL_MAP: Record<string, { label: string; dot: string; color: string }> = {
+      V: { label: 'Verde',    dot: '#22C55E', color: '#166534' },
+      R: { label: 'Rojo',     dot: '#EF4444', color: '#991B1B' },
+      N: { label: 'Naranja',  dot: '#F97316', color: '#9A3412' },
+      A: { label: 'Amarillo', dot: '#EAB308', color: '#92400E' },
     }
-    const badge = canal && CANAL_MAP[canal]
-      ? <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 100, fontSize: 11, fontWeight: 500, background: CANAL_MAP[canal].bg, color: CANAL_MAP[canal].color }}>{CANAL_MAP[canal].label}</span>
-      : <span style={{ color: '#C4B89A' }}>—</span>
+    const entry = canal && CANAL_MAP[canal] ? CANAL_MAP[canal] : null
     return (
       <div onClick={e => openCanalPopover(op, e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20, transition: 'background 80ms' }} className="cell-hover">
-        {badge}
+        {entry ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: entry.color }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot, flexShrink: 0, display: 'inline-block' }} />
+            {entry.label}
+          </span>
+        ) : (
+          <span style={{ color: '#C4B89A' }}>—</span>
+        )}
       </div>
     )
   }
 
   const TH: React.CSSProperties = {
     textAlign: 'center', padding: '0 6px 10px', fontSize: 10.5, fontWeight: 500,
-    textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7A7158',
+    textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9CA3AF',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   }
   const THL: React.CSSProperties = { ...TH, textAlign: 'left' }
+
+  function Kbd({ children }: { children: React.ReactNode }) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#E8E5DE', border: '1px solid #D6D3CC', borderRadius: 3, padding: '1px 5px', fontSize: 11, fontFamily: 'ui-monospace, monospace', color: '#4A4332', lineHeight: 1.4 }}>
+        {children}
+      </span>
+    )
+  }
 
   return (
     <>
       <style>{`
         .cell-hover:hover { background: rgba(31,27,20,.05); }
-        .row-h:hover { background: #FBF7E8 !important; }
+        .row-h { transition: background 60ms; }
+        .row-h:hover { background: ${ROW_HOVER} !important; }
         .row-h:hover .act-btn { opacity: 1 !important; }
         .act-btn:hover { background: rgba(31,27,20,.07) !important; color: #1F1B14 !important; }
-        .st-interno  { position: sticky; left: 4px;   background: #FFFFFF; z-index: 2; }
-        .st-cliente  { position: sticky; left: 126px; background: #FFFFFF; z-index: 2; }
-        .st-action   { position: sticky; right: 0px;  background: #FFFFFF; z-index: 2; }
-        .row-h:hover .st-interno  { background: #FBF7E8; }
-        .row-h:hover .st-cliente  { background: #FBF7E8; }
-        .row-h:hover .st-action   { background: #FBF7E8; }
-        th.st-interno { background: #FFFFFF; z-index: 3; }
-        th.st-cliente { background: #FFFFFF; z-index: 3; }
-        th.st-action  { background: #FFFFFF; z-index: 3; }
-        .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 12; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: background 100ms, border-color 100ms; }
-        .chip-off { background: transparent; border-color: #E8DFC5; color: #7A7158; }
-        .chip-off:hover { background: #F2ECDC; }
-        .chip-warn { background: #FCEBC4; border-color: #E8DFC5; color: #92400E; }
-        .chip-bad  { background: #FBDDD4; border-color: #E8DFC5; color: #991B1B; }
+        .st-interno  { position: sticky; left: 3px;   background: ${BG}; z-index: 2; }
+        .st-cliente  { position: sticky; left: 125px; background: ${BG}; z-index: 2; }
+        .st-action   { position: sticky; right: 0px;  background: ${BG}; z-index: 2; }
+        .row-h:hover .st-interno  { background: ${ROW_HOVER}; }
+        .row-h:hover .st-cliente  { background: ${ROW_HOVER}; }
+        .row-h:hover .st-action   { background: ${ROW_HOVER}; }
+        th.st-interno { background: ${BG}; z-index: 3; }
+        th.st-cliente { background: ${BG}; z-index: 3; }
+        th.st-action  { background: ${BG}; z-index: 3; }
+        .tab-inner { background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; transition: color 100ms; }
+        .chip-btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 500; border: 1px solid #E8DFC5; cursor: pointer; transition: background 100ms, border-color 100ms; background: transparent; color: #7A7158; }
+        .chip-btn:hover { background: #F2ECDC; }
+        .chip-active-warn { background: #FEF3C7 !important; border-color: #FCD34D !important; color: #92400E !important; }
+        .chip-active-bad  { background: #FEE2E2 !important; border-color: #FCA5A5 !important; color: #991B1B !important; }
+        .toolbar-btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 400; border: 1px solid #E8DFC5; cursor: pointer; background: transparent; color: #7A7158; transition: background 80ms; }
+        .toolbar-btn:hover { background: #F2ECDC; }
+        .pipe { width: 1px; height: 18px; background: #E8DFC5; margin: 0 2px; flex-shrink: 0; }
       `}</style>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 56 }}>
 
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1F1B14', margin: 0, letterSpacing: '-0.01em' }}>Operaciones</h1>
-            <p style={{ fontSize: 13, color: '#7A7158', margin: '4px 0 0' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1F1B14', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.2 }}>Operaciones</h1>
+            <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0', lineHeight: 1.4 }}>
               {loading ? 'Cargando...' : (
                 section === 'pendientes'
-                  ? `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}${atrasadasCount ? ` · ${atrasadasCount} atrasada${atrasadasCount !== 1 ? 's' : ''}` : ''}${retenidasCount ? ` · ${retenidasCount} retenida${retenidasCount !== 1 ? 's' : ''} en SENASA` : ''}`
-                  : `${liberadas.length} liberada${liberadas.length !== 1 ? 's' : ''}`
+                  ? `Mostrando ${filtradas.length} pendiente${filtradas.length !== 1 ? 's' : ''} · ${pendientes.length} pendientes en total · ${liberadas.length} liberadas`
+                  : `Mostrando ${filtradas.length} liberada${filtradas.length !== 1 ? 's' : ''} · ${liberadas.length} liberadas en total`
               )}
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, paddingTop: 4 }}>
             <button
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 34, fontSize: 13, fontWeight: 500, color: '#4A4332', background: 'transparent', border: '1px solid #E8DFC5', borderRadius: 6, cursor: 'pointer', transition: 'background 120ms' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#F2ECDC' }}
@@ -505,7 +511,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             </button>
             <button
               onClick={() => setModalOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 34, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: '#1F1B14', border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'background 120ms', whiteSpace: 'nowrap' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 0 14px', height: 34, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: '#1F1B14', border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'background 120ms', whiteSpace: 'nowrap' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#111008' }}
               onMouseLeave={e => { e.currentTarget.style.background = '#1F1B14' }}
             >
@@ -513,30 +519,32 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
               Nueva operación
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, background: 'rgba(255,255,255,0.15)', borderRadius: 3, fontSize: 11, fontFamily: 'ui-monospace, monospace', fontWeight: 600, marginLeft: 2 }}>N</span>
             </button>
           </div>
         </div>
 
-        {/* Section tabs: Pendientes | Liberadas */}
+        {/* Section tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8DFC5' }}>
           {([
             { key: 'pendientes', label: 'Pendientes de liberación', count: pendientes.length },
             { key: 'liberadas',  label: 'Liberadas',                count: liberadas.length  },
           ] as { key: Section; label: string; count: number }[]).map(s => (
-            <button
-              key={s.key}
-              onClick={() => setSection(s.key)}
-              style={{
-                padding: '8px 16px', fontSize: 13, fontWeight: section === s.key ? 600 : 400,
-                border: 'none', background: 'none', cursor: 'pointer',
-                color: section === s.key ? '#1F1B14' : '#7A7158',
-                borderBottom: section === s.key ? '2px solid #1F1B14' : '2px solid transparent',
-                marginBottom: -1, display: 'flex', alignItems: 'center', gap: 6,
-                transition: 'color 100ms',
-              }}
-            >
+            <button key={s.key} onClick={() => setSection(s.key)} style={{
+              padding: '8px 16px 9px', fontSize: 13, fontWeight: section === s.key ? 600 : 400,
+              border: 'none', background: 'none', cursor: 'pointer',
+              color: section === s.key ? '#1F1B14' : '#9CA3AF',
+              borderBottom: section === s.key ? '2px solid #1F1B14' : '2px solid transparent',
+              marginBottom: -1, display: 'flex', alignItems: 'center', gap: 6, transition: 'color 100ms',
+            }}>
               {s.label}
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, padding: '0 5px', height: 18, borderRadius: 100, fontSize: 11, fontWeight: 500, background: section === s.key ? '#E8DFC5' : '#F2ECDC', color: section === s.key ? '#4A4332' : '#ADA482' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minWidth: 20, padding: '0 5px', height: 18, borderRadius: 100,
+                fontSize: 11, fontWeight: 600,
+                background: section === s.key ? '#1F1B14' : '#EDEBE4',
+                color: section === s.key ? '#FFFFFF' : '#9CA3AF',
+              }}>
                 {s.count}
               </span>
             </button>
@@ -544,79 +552,101 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         </div>
 
         {/* Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Mis / Todas segmented */}
-            <div style={{ display: 'flex', gap: 2, background: '#F2ECDC', borderRadius: 8, padding: 3, border: '1px solid #E8DFC5' }}>
-              {(['mis', 'todas'] as InnerTab[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setInnerTab(t)}
-                  style={{ padding: '3px 10px', fontSize: 12, fontWeight: 500, borderRadius: 5, border: 'none', cursor: 'pointer', transition: 'background 100ms', background: innerTab === t ? '#FFFFFF' : 'transparent', color: innerTab === t ? '#1F1B14' : '#4A4332', boxShadow: innerTab === t ? '0 1px 2px rgba(31,27,20,.08)' : 'none' }}
-                >
-                  {t === 'mis' ? 'Mis operaciones' : 'Todas'}
-                </button>
-              ))}
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Mis / Todas */}
+            <button className="tab-inner" onClick={() => setInnerTab('mis')}
+              style={{ color: innerTab === 'mis' ? '#1F1B14' : '#9CA3AF', fontWeight: innerTab === 'mis' ? 600 : 400, fontSize: 13 }}>
+              Mis operaciones
+              {misCount > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, padding: '0 4px', height: 17, borderRadius: 100, fontSize: 11, fontWeight: 600, background: innerTab === 'mis' ? '#1F1B14' : '#EDEBE4', color: innerTab === 'mis' ? '#FFFFFF' : '#9CA3AF' }}>
+                  {misCount}
+                </span>
+              )}
+            </button>
+            <button className="tab-inner" onClick={() => setInnerTab('todas')}
+              style={{ color: innerTab === 'todas' ? '#1F1B14' : '#9CA3AF', fontWeight: innerTab === 'todas' ? 600 : 400, fontSize: 13 }}>
+              Todas
+            </button>
+
+            <div className="pipe" />
 
             {/* Filter chips — only in pendientes */}
             {section === 'pendientes' && (
               <>
-                <button
-                  onClick={() => setChipAtrasadas(v => !v)}
-                  className={`chip ${chipAtrasadas ? 'chip-warn' : 'chip-off'}`}
-                  aria-pressed={chipAtrasadas}
-                >
-                  {chipAtrasadas && (
-                    <svg style={{ width: 10, height: 10 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  Atrasadas{atrasadasCount > 0 && ` (${atrasadasCount})`}
+                <button onClick={() => setChipAtrasadas(v => !v)} className={`chip-btn${chipAtrasadas ? ' chip-active-warn' : ''}`} aria-pressed={chipAtrasadas}>
+                  <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                    <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Atrasadas{atrasadasCount > 0 && ` ${atrasadasCount}`}
                 </button>
-                <button
-                  onClick={() => setChipRetenidas(v => !v)}
-                  className={`chip ${chipRetenidas ? 'chip-bad' : 'chip-off'}`}
-                  aria-pressed={chipRetenidas}
-                >
-                  {chipRetenidas && (
-                    <svg style={{ width: 10, height: 10 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  Retenidas SENASA{retenidasCount > 0 && ` (${retenidasCount})`}
+                <button onClick={() => setChipRetenidas(v => !v)} className={`chip-btn${chipRetenidas ? ' chip-active-bad' : ''}`} aria-pressed={chipRetenidas}>
+                  <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Retenidas en SENASA{retenidasCount > 0 && ` ${retenidasCount}`}
                 </button>
+                <div className="pipe" />
               </>
             )}
+
+            <button className="toolbar-btn">
+              <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M11 12h2" />
+              </svg>
+              Filtros
+            </button>
+            <button className="toolbar-btn">
+              <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+              Ordenar
+            </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Search with / badge */}
             <div style={{ position: 'relative' }}>
-              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#7A7158', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9CA3AF', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
+                ref={searchRef}
                 type="text"
-                placeholder="Buscar..."
+                placeholder="Buscar interno, cliente, OC, fac..."
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                style={{ paddingLeft: 30, paddingRight: 12, height: 32, fontSize: 13, border: '1px solid #E8DFC5', borderRadius: 6, outline: 'none', width: 200, background: '#FFFFFF', color: '#1F1B14' }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#1E40AF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,.12)' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#E8DFC5'; e.currentTarget.style.boxShadow = 'none' }}
+                style={{ paddingLeft: 28, paddingRight: 32, height: 30, fontSize: 12, border: '1px solid #E8DFC5', borderRadius: 6, outline: 'none', width: 232, background: 'transparent', color: '#1F1B14' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#1E40AF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,.12)'; e.currentTarget.style.background = '#FFFFFF' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#E8DFC5'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.background = 'transparent' }}
               />
+              {!busqueda && (
+                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: '#E8E5DE', border: '1px solid #D6D3CC', borderRadius: 3, padding: '1px 4px', fontSize: 10, fontFamily: 'ui-monospace, monospace', color: '#9CA3AF', pointerEvents: 'none' }}>
+                  /
+                </span>
+              )}
             </div>
 
             {/* Refresh */}
-            <button
-              onClick={cargarOperaciones}
-              title="Actualizar"
-              style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E8DFC5', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#7A7158', transition: 'color 100ms, background 100ms' }}
+            <button onClick={cargarOperaciones} title="Actualizar"
+              style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E8DFC5', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#9CA3AF', transition: 'color 100ms, background 100ms' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#1F1B14'; e.currentTarget.style.background = '#F2ECDC' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#7A7158'; e.currentTarget.style.background = 'transparent' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.background = 'transparent' }}
             >
               <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+
+            {/* More */}
+            <button title="Más opciones"
+              style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E8DFC5', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#9CA3AF', transition: 'color 100ms, background 100ms' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#1F1B14'; e.currentTarget.style.background = '#F2ECDC' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.background = 'transparent' }}
+            >
+              <svg style={{ width: 14, height: 14 }} fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
               </svg>
             </button>
           </div>
@@ -628,190 +658,210 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           </div>
         )}
 
-        {/* Table card */}
-        <div style={{ border: '1px solid #E8DFC5', borderRadius: 10, boxShadow: '0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05)', overflow: 'hidden', background: '#FFFFFF' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#1F1B14', tableLayout: 'fixed', minWidth: 1180 }}>
-              <colgroup>
-                <col style={{ width: 4 }} />    {/* stripe */}
-                <col style={{ width: 62 }} />   {/* interno */}
-                <col style={{ width: 60 }} />   {/* recep */}
-                <col style={{ width: 156 }} />  {/* cliente */}
-                <col style={{ width: 66 }} />   {/* oc */}
-                <col style={{ width: 86 }} />   {/* factura */}
-                <col style={{ width: 82 }} />   {/* crt */}
-                <col style={{ width: 60 }} />   {/* ped. $ */}
-                <col style={{ width: 64 }} />   {/* senasa */}
-                <col style={{ width: 100 }} />  {/* est. senasa */}
-                <col style={{ width: 60 }} />   {/* ofic */}
-                <col style={{ width: 98 }} />   {/* despacho */}
-                <col style={{ width: 78 }} />   {/* canal */}
-                <col style={{ width: 60 }} />   {/* aviso */}
-                <col style={{ width: 68 }} />   {/* nota ent */}
-                <col style={{ width: 76 }} />   {/* liberacion */}
-                {innerTab === 'todas' && <col style={{ width: 90 }} />}
-                <col style={{ width: 32 }} />   {/* action */}
-              </colgroup>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E8DFC5' }}>
-                  <th style={{ padding: 0, width: 4 }} />
-                  <th style={{ ...TH, textAlign: 'left', paddingLeft: 8 }} className="st-interno">Inter.</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Recepción de documentos">Recep.</th>
-                  <th style={THL} className="st-cliente">Cliente</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Orden de compra del cliente">OC</th>
-                  <th style={TH}>Factura</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Carta de porte internacional">CRT</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Pedido de fondos">Ped. $</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Número SENASA">SENASA</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Estado SENASA">Est. SENASA</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Fecha de oficialización">Ofic.</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Número de despacho">Despacho</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Canal aduanero">Canal</th>
-                  <th style={TH}>Aviso</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
-                  {innerTab === 'todas' && <th style={THL}>Cargado por</th>}
-                  <th style={{ width: 32, padding: '0 4px 10px' }} className="st-action" />
+        {/* Table — no card wrapper, sits on page background */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#1F1B14', tableLayout: 'fixed', minWidth: 1180 }}>
+            <colgroup>
+              <col style={{ width: 3 }} />    {/* stripe */}
+              <col style={{ width: 62 }} />   {/* interno */}
+              <col style={{ width: 60 }} />   {/* recep */}
+              <col style={{ width: 156 }} />  {/* cliente */}
+              <col style={{ width: 66 }} />   {/* oc */}
+              <col style={{ width: 86 }} />   {/* factura */}
+              <col style={{ width: 82 }} />   {/* crt */}
+              <col style={{ width: 60 }} />   {/* ped. $ */}
+              <col style={{ width: 64 }} />   {/* senasa */}
+              <col style={{ width: 100 }} />  {/* est. senasa */}
+              <col style={{ width: 60 }} />   {/* ofic */}
+              <col style={{ width: 98 }} />   {/* despacho */}
+              <col style={{ width: 78 }} />   {/* canal */}
+              <col style={{ width: 60 }} />   {/* aviso */}
+              <col style={{ width: 68 }} />   {/* nota ent */}
+              <col style={{ width: 76 }} />   {/* liberacion */}
+              {innerTab === 'todas' && <col style={{ width: 90 }} />}
+              <col style={{ width: 32 }} />   {/* action */}
+            </colgroup>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #E8DFC5' }}>
+                <th style={{ padding: 0, width: 3 }} />
+                <th style={{ ...TH, textAlign: 'left', paddingLeft: 8 }} className="st-interno">Inter.</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Recepción de documentos">Recep.</th>
+                <th style={THL} className="st-cliente">Cliente</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Orden de compra del cliente">OC</th>
+                <th style={TH}>Factura</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Carta de porte internacional">CRT</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Pedido de fondos">Ped. $</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Número SENASA">SENASA</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Estado SENASA">Est. SENASA</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Fecha de oficialización">Ofic.</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Número de despacho">Despacho</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Canal aduanero">Canal</th>
+                <th style={TH}>Aviso</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
+                <th style={{ ...TH, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
+                {innerTab === 'todas' && <th style={THL}>Cargado por</th>}
+                <th style={{ width: 32, padding: '0 4px 10px' }} className="st-action" />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={totalCols} style={{ padding: '48px 16px', textAlign: 'center', color: '#9CA3AF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <svg className="animate-spin" style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Cargando operaciones...
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={totalCols} style={{ padding: '48px 16px', textAlign: 'center', color: '#7A7158' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <svg className="animate-spin" style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Cargando operaciones...
-                      </div>
-                    </td>
-                  </tr>
-                ) : filtradas.length === 0 ? (
-                  <tr>
-                    <td colSpan={totalCols} style={{ padding: '64px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <svg style={{ width: 32, height: 32, color: '#E8DFC5' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p style={{ fontSize: 13, color: '#7A7158', margin: 0 }}>
-                          {busqueda || chipAtrasadas || chipRetenidas
-                            ? `No hay operaciones ${section} con esos filtros.`
-                            : section === 'pendientes'
-                            ? 'No hay operaciones pendientes.'
-                            : 'No hay operaciones liberadas.'}
-                        </p>
-                        {!busqueda && !chipAtrasadas && !chipRetenidas && section === 'pendientes' && (
-                          <button onClick={() => setModalOpen(true)} style={{ marginTop: 4, fontSize: 13, color: '#1F1B14', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                            + Nueva operación
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filtradas.map(op => {
-                    const stripe = getStripeColor(op)
-                    const atrasada = isAtrasada(op)
-                    const dias = getDiasEnEtapa(op)
+              ) : filtradas.length === 0 ? (
+                <tr>
+                  <td colSpan={totalCols} style={{ padding: '64px 16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <svg style={{ width: 32, height: 32, color: '#E8DFC5' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>
+                        {busqueda || chipAtrasadas || chipRetenidas
+                          ? `No hay operaciones ${section} con esos filtros.`
+                          : section === 'pendientes' ? 'No hay operaciones pendientes.' : 'No hay operaciones liberadas.'}
+                      </p>
+                      {!busqueda && !chipAtrasadas && !chipRetenidas && section === 'pendientes' && (
+                        <button onClick={() => setModalOpen(true)} style={{ marginTop: 4, fontSize: 13, color: '#1F1B14', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                          + Nueva operación
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginated.map(op => {
+                  const stripe = getStripeColor(op)
+                  const atrasada = isAtrasada(op)
+                  const dias = getDiasEnEtapa(op)
 
-                    return (
-                      <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #E8DFC5', height: 36 }}>
+                  return (
+                    <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EEEAE3', height: 36 }}>
 
-                        {/* Stripe */}
-                        <td style={{ padding: 0, width: 4 }}>
-                          {stripe && (
-                            <div style={{ width: 2, height: 26, borderRadius: 99, background: stripe, margin: '0 auto' }} />
-                          )}
-                        </td>
+                      {/* Stripe */}
+                      <td style={{ padding: 0, width: 3, background: stripe ?? 'transparent' }} />
 
-                        {/* Interno */}
-                        <td style={{ padding: '0 4px 0 8px', overflow: 'hidden' }} className="st-interno">
-                          <div style={{ fontWeight: 600, color: atrasada ? '#991B1B' : '#1D4ED8', ...MONO }}>
-                            {renderCell(op, 'interno', { ...MONO, textAlign: 'left', justifyContent: 'flex-start' })}
+                      {/* Interno */}
+                      <td style={{ padding: '0 4px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
+                        <div style={{ fontWeight: 600, color: atrasada ? '#EF4444' : '#1D4ED8', ...MONO, lineHeight: 1.2 }}>
+                          {renderCell(op, 'interno', { ...MONO, textAlign: 'left', justifyContent: 'flex-start', color: atrasada ? '#EF4444' : '#1D4ED8', fontWeight: 600 })}
+                        </div>
+                        {atrasada && (
+                          <div style={{ fontSize: 11, color: '#EF4444', marginTop: 1, textAlign: 'left', paddingLeft: 3 }} title={`${dias} días sin avance`}>
+                            {dias}d
                           </div>
-                          {atrasada && (
-                            <div style={{ fontSize: 10, color: '#D97706', marginTop: 1 }} title={`${dias} días sin avance`}>
-                              {dias}d
-                            </div>
-                          )}
-                        </td>
-
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'recep_doc')}
-                        </td>
-
-                        {/* Cliente */}
-                        <td style={{ padding: '0 4px', overflow: 'hidden' }} className="st-cliente">
-                          {renderCellLeft(op, 'cliente')}
-                        </td>
-
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO, color: '#7A7158' }}>
-                          {renderCell(op, 'oc', MONO)}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO, color: '#7A7158' }}>
-                          {renderCell(op, 'factura', MONO)}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO, color: '#7A7158' }}>
-                          {renderCell(op, 'crt', MONO)}
-                        </td>
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'fecha_pedido_fondos')}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO, color: '#7A7158' }}>
-                          {renderCell(op, 'senasa', MONO)}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderSenasaCell(op)}
-                        </td>
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'oficializacion')}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO, color: '#7A7158' }}>
-                          {renderCell(op, 'despacho', MONO)}
-                        </td>
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCanalCell(op)}
-                        </td>
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'aviso')}
-                        </td>
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'nota_entrega')}
-                        </td>
-                        <td style={{ padding: '0 4px', color: '#7A7158', overflow: 'hidden', textAlign: 'center' }}>
-                          {renderCell(op, 'liberacion')}
-                        </td>
-
-                        {innerTab === 'todas' && (
-                          <td style={{ padding: '0 4px', color: '#ADA482', overflow: 'hidden', fontSize: 11, textAlign: 'left' }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                              {op.created_by_email ?? '—'}
-                            </span>
-                          </td>
                         )}
+                      </td>
 
-                        {/* Action: open detail */}
-                        <td style={{ padding: '0 2px', overflow: 'hidden', textAlign: 'center' }} className="st-action">
-                          <button
-                            onClick={() => setPanelOp(op)}
-                            title="Ver detalle"
-                            className="act-btn"
-                            style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#7A7158', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}
-                          >
-                            <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </button>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'recep_doc')}
+                      </td>
+
+                      {/* Cliente */}
+                      <td style={{ padding: '0 4px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-cliente">
+                        {renderCellLeft(op, 'cliente')}
+                      </td>
+
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle', ...MONO, color: '#9CA3AF' }}>
+                        {renderCell(op, 'oc', MONO)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle', ...MONO, color: '#9CA3AF' }}>
+                        {renderCell(op, 'factura', MONO)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle', ...MONO, color: '#9CA3AF' }}>
+                        {renderCell(op, 'crt', MONO)}
+                      </td>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'fecha_pedido_fondos')}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle', ...MONO, color: '#9CA3AF' }}>
+                        {renderCell(op, 'senasa', MONO)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderSenasaCell(op)}
+                      </td>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'oficializacion')}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle', ...MONO, color: '#9CA3AF' }}>
+                        {renderCell(op, 'despacho', MONO)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCanalCell(op)}
+                      </td>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'aviso')}
+                      </td>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'nota_entrega')}
+                      </td>
+                      <td style={{ padding: '0 4px', color: '#9CA3AF', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }}>
+                        {renderCell(op, 'liberacion')}
+                      </td>
+
+                      {innerTab === 'todas' && (
+                        <td style={{ padding: '0 4px', color: '#C4B89A', overflow: 'hidden', fontSize: 11, textAlign: 'left', verticalAlign: 'middle' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            {op.created_by_email ?? '—'}
+                          </span>
                         </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      )}
+
+                      {/* Action */}
+                      <td style={{ padding: '0 2px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }} className="st-action">
+                        <button onClick={() => setPanelOp(op)} title="Ver detalle" className="act-btn"
+                          style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9CA3AF', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}>
+                          <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {/* Table footer: results + pagination */}
+        {!loading && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0 0' }}>
+            <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+              {filtradas.length} resultado{filtradas.length !== 1 ? 's' : ''} · Última carga: {timeAgoStr}
+            </span>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E8DFC5', borderRadius: 5, background: 'transparent', cursor: page <= 1 ? 'default' : 'pointer', color: page <= 1 ? '#C4B89A' : '#7A7158', fontSize: 14, transition: 'background 80ms' }}
+                  onMouseEnter={e => { if (page > 1) e.currentTarget.style.background = '#F2ECDC' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  ‹
+                </button>
+                <span style={{ fontSize: 12, color: '#7A7158', minWidth: 24, textAlign: 'center' }}>{page}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E8DFC5', borderRadius: 5, background: 'transparent', cursor: page >= totalPages ? 'default' : 'pointer', color: page >= totalPages ? '#C4B89A' : '#7A7158', fontSize: 14, transition: 'background 80ms' }}
+                  onMouseEnter={e => { if (page < totalPages) e.currentTarget.style.background = '#F2ECDC' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  ›
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* SENASA Popover */}
@@ -824,9 +874,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <button key={opt.value} type="button"
                   onClick={() => setSenasaPopover(prev => prev ? { ...prev, estado: opt.value } : null)}
                   style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 80ms', background: senasaPopover.estado === opt.value ? '#1F1B14' : 'transparent', color: senasaPopover.estado === opt.value ? '#FFFFFF' : '#1F1B14', fontWeight: senasaPopover.estado === opt.value ? 500 : 400 }}
-                >
-                  {opt.label}
-                </button>
+                >{opt.label}</button>
               ))}
             </div>
             {senasaPopover.estado === 'vinculada' && (
@@ -863,9 +911,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   <button key={val ?? 'none'} type="button"
                     onClick={() => setCanalPopover(prev => prev ? { ...prev, canal: val } : null)}
                     style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 80ms', background: isSelected ? '#1F1B14' : 'transparent', color: isSelected ? '#FFFFFF' : '#1F1B14', fontWeight: isSelected ? 500 : 400 }}
-                  >
-                    {val === null ? '—' : labels[val]}
-                  </button>
+                  >{val === null ? '—' : labels[val]}</button>
                 )
               })}
             </div>
@@ -888,12 +934,32 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       />
 
       {panelOp && (
-        <PanelDetalle
-          op={panelOp}
-          onClose={() => setPanelOp(null)}
-          onSave={handlePanelSave}
-        />
+        <PanelDetalle op={panelOp} onClose={() => setPanelOp(null)} onSave={handlePanelSave} />
       )}
+
+      {/* Fixed bottom shortcuts bar */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 36, background: '#F5F4F0', borderTop: '1px solid #E8E5DE', display: 'flex', alignItems: 'center', paddingLeft: 24, paddingRight: 24, gap: 20, zIndex: 30, fontSize: 12, color: '#9CA3AF', overflow: 'hidden' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Kbd>↑</Kbd><Kbd>↓</Kbd><Kbd>-</Kbd><Kbd>+</Kbd>
+          <span>navegar celdas</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Kbd>2x click</Kbd><span style={{ color: '#C4B89A' }}>o</span><Kbd>Enter</Kbd>
+          <span>editar celda</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Kbd>Tab</Kbd>
+          <span>siguiente</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Kbd>/</Kbd>
+          <span>buscar</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Kbd>N</Kbd>
+          <span>nueva operación</span>
+        </span>
+      </div>
     </>
   )
 }
