@@ -38,7 +38,7 @@ export default async function OperacionesPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Header email={user.email} rol={userRol} />
-      <main style={{ flex: 1, maxWidth: 1536, margin: '0 auto', width: '100%', padding: '28px 24px' }}>
+      <main style={{ flex: 1, maxWidth: 1600, margin: '0 auto', width: '100%', padding: '20px 24px 48px' }}>
         <TablaOperaciones userEmail={user.email} userId={user.id} userRol={userRol} />
       </main>
     </div>
