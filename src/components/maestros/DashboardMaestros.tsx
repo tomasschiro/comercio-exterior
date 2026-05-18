@@ -12,6 +12,27 @@ interface Props {
 
 const inputCls = 'w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 
+async function getToken(): Promise<string | null> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token ?? null
+}
+
+async function apiFetch(path: string, method: string, body?: object) {
+  const token = await getToken()
+  const res = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Error desconocido')
+  return data
+}
+
 // -------------------- Modals --------------------
 
 function ModalNuevoCliente({ onSave, onClose, zIndex = 'z-50' }: {
@@ -28,14 +49,17 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 'z-50' }: {
     if (!form.nombre.trim()) return
     setLoading(true)
     setError('')
-    const supabase = createClient()
-    const { data, error: dbErr } = await supabase
-      .from('clientes')
-      .insert({ nombre: form.nombre.trim(), email: form.email.trim() || null, telefono: form.telefono.trim() || null })
-      .select()
-      .single()
-    if (dbErr) { setError(dbErr.message); setLoading(false); return }
-    onSave(data)
+    try {
+      const data = await apiFetch('/api/maestros/clientes', 'POST', {
+        nombre: form.nombre.trim(),
+        email: form.email.trim() || null,
+        telefono: form.telefono.trim() || null,
+      })
+      onSave(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+      setLoading(false)
+    }
   }
 
   return (
@@ -96,14 +120,16 @@ function ModalNuevoTransporte({ onSave, onClose, zIndex = 'z-50' }: {
     if (!form.nombre.trim()) return
     setLoading(true)
     setError('')
-    const supabase = createClient()
-    const { data, error: dbErr } = await supabase
-      .from('transportes')
-      .insert({ nombre: form.nombre.trim(), telefono: form.telefono.trim() || null })
-      .select()
-      .single()
-    if (dbErr) { setError(dbErr.message); setLoading(false); return }
-    onSave(data)
+    try {
+      const data = await apiFetch('/api/maestros/transportes', 'POST', {
+        nombre: form.nombre.trim(),
+        telefono: form.telefono.trim() || null,
+      })
+      onSave(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+      setLoading(false)
+    }
   }
 
   return (
@@ -162,16 +188,17 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
   async function saveEdit() {
     if (!editId) return
     setLoadingId(editId)
-    const supabase = createClient()
     const updates = {
-      nombre: editForm.nombre.trim() || undefined,
+      nombre: editForm.nombre.trim(),
       email: editForm.email.trim() || null,
       telefono: editForm.telefono.trim() || null,
     }
-    const { error } = await supabase.from('clientes').update(updates).eq('id', editId)
-    if (!error) {
-      setClientes(prev => prev.map(c => c.id === editId ? { ...c, ...updates, nombre: editForm.nombre.trim() || c.nombre } : c))
+    try {
+      await apiFetch('/api/maestros/clientes', 'PUT', { id: editId, ...updates })
+      setClientes(prev => prev.map(c => c.id === editId ? { ...c, ...updates } : c))
       setEditId(null)
+    } catch {
+      // silently fail — keep edit mode open
     }
     setLoadingId(null)
   }
@@ -179,9 +206,12 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
   async function toggleActivo(c: Cliente, e: React.MouseEvent) {
     e.stopPropagation()
     setLoadingId(c.id)
-    const supabase = createClient()
-    const { error } = await supabase.from('clientes').update({ activo: !c.activo }).eq('id', c.id)
-    if (!error) setClientes(prev => prev.map(x => x.id === c.id ? { ...x, activo: !x.activo } : x))
+    try {
+      await apiFetch('/api/maestros/clientes', 'PUT', { id: c.id, activo: !c.activo })
+      setClientes(prev => prev.map(x => x.id === c.id ? { ...x, activo: !x.activo } : x))
+    } catch {
+      // silently fail
+    }
     setLoadingId(null)
   }
 
@@ -189,11 +219,12 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
     e.stopPropagation()
     if (!window.confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')) return
     setLoadingId(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('clientes').delete().eq('id', id)
-    if (!error) {
+    try {
+      await apiFetch('/api/maestros/clientes', 'DELETE', { id })
       setClientes(prev => prev.filter(c => c.id !== id))
       if (editId === id) setEditId(null)
+    } catch {
+      // silently fail
     }
     setLoadingId(null)
   }
@@ -354,15 +385,16 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
   async function saveEdit() {
     if (!editId) return
     setLoadingId(editId)
-    const supabase = createClient()
     const updates = {
-      nombre: editForm.nombre.trim() || undefined,
+      nombre: editForm.nombre.trim(),
       telefono: editForm.telefono.trim() || null,
     }
-    const { error } = await supabase.from('transportes').update(updates).eq('id', editId)
-    if (!error) {
-      setTransportes(prev => prev.map(t => t.id === editId ? { ...t, ...updates, nombre: editForm.nombre.trim() || t.nombre } : t))
+    try {
+      await apiFetch('/api/maestros/transportes', 'PUT', { id: editId, ...updates })
+      setTransportes(prev => prev.map(t => t.id === editId ? { ...t, ...updates } : t))
       setEditId(null)
+    } catch {
+      // silently fail — keep edit mode open
     }
     setLoadingId(null)
   }
@@ -370,9 +402,12 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
   async function toggleActivo(t: Transporte, e: React.MouseEvent) {
     e.stopPropagation()
     setLoadingId(t.id)
-    const supabase = createClient()
-    const { error } = await supabase.from('transportes').update({ activo: !t.activo }).eq('id', t.id)
-    if (!error) setTransportes(prev => prev.map(x => x.id === t.id ? { ...x, activo: !x.activo } : x))
+    try {
+      await apiFetch('/api/maestros/transportes', 'PUT', { id: t.id, activo: !t.activo })
+      setTransportes(prev => prev.map(x => x.id === t.id ? { ...x, activo: !x.activo } : x))
+    } catch {
+      // silently fail
+    }
     setLoadingId(null)
   }
 
@@ -380,11 +415,12 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
     e.stopPropagation()
     if (!window.confirm('¿Eliminar este transporte? Esta acción no se puede deshacer.')) return
     setLoadingId(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('transportes').delete().eq('id', id)
-    if (!error) {
+    try {
+      await apiFetch('/api/maestros/transportes', 'DELETE', { id })
       setTransportes(prev => prev.filter(t => t.id !== id))
       if (editId === id) setEditId(null)
+    } catch {
+      // silently fail
     }
     setLoadingId(null)
   }
