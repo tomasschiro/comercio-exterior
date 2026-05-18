@@ -57,13 +57,13 @@ export default function Header({ email, rol }: HeaderProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, background: '#0D0D0D', borderRadius: 2, flexShrink: 0 }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-              Comercio Exterior
+              R.M.S Comercio Exterior
             </span>
           </div>
 
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {[
-              { href: '/dashboard', label: 'Dashboard' },
+              { href: '/dashboard', label: 'Inicio' },
             { href: '/operaciones', label: 'Operaciones' },
               { href: '/reportes', label: 'Reportes' },
               ...(rol === 'superadmin' ? [{ href: '/maestros', label: 'Maestros' }] : []),

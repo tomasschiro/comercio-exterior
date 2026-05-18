@@ -186,7 +186,7 @@ export default async function DashboardPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['Interno', 'Cliente', 'Despacho', 'Estado', 'Progreso'].map(h => (
+                    {['Interno', 'Cliente', 'Factura', 'Estado', 'Progreso'].map(h => (
                       <th key={h} style={{
                         padding: '10px 16px 8px',
                         fontSize: 11, fontWeight: 500,
@@ -279,11 +279,14 @@ export default async function DashboardPage() {
                   borderTop: i > 0 ? '0.5px solid #BBF7D0' : undefined,
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}>
-                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#16A34A', minWidth: 32, flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#16A34A', minWidth: 28, flexShrink: 0 }}>
                     {op.interno ?? '—'}
                   </span>
-                  <span style={{ fontSize: 12, color: '#15803D', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 12, color: '#15803D', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                     {op.cliente ?? '—'}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#16A34A', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {op.despacho ?? '—'}
                   </span>
                   <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     {fmtDate(op.liberacion)}
@@ -310,11 +313,14 @@ export default async function DashboardPage() {
                     borderTop: i > 0 ? '0.5px solid #FDE68A' : undefined,
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}>
-                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#D97706', minWidth: 32, flexShrink: 0 }}>
+                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#D97706', minWidth: 28, flexShrink: 0 }}>
                       {op.interno ?? '—'}
                     </span>
-                    <span style={{ fontSize: 12, color: '#92400E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 12, color: '#92400E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                       {op.cliente ?? '—'}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#D97706', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {op.despacho ?? '—'}
                     </span>
                     <span style={{
                       fontSize: 11, fontWeight: 600,

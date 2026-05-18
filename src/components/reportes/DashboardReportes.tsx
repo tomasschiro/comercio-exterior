@@ -240,7 +240,7 @@ export default function DashboardReportes({ operaciones }: Props) {
               {operaciones.length === 0 ? (
                 <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
               ) : (
-                <ResponsiveContainer width="100%" height={230}>
+                <ResponsiveContainer width="100%" height={230} style={{ backgroundColor: '#FFFFFF' }}>
                   <PieChart>
                     <Pie
                       data={donutData}
@@ -271,7 +271,7 @@ export default function DashboardReportes({ operaciones }: Props) {
               {topClientes.length === 0 ? (
                 <p className="text-sm text-gray-400 py-16 text-center">Sin datos</p>
               ) : (
-                <ResponsiveContainer width="100%" height={230}>
+                <ResponsiveContainer width="100%" height={230} style={{ backgroundColor: '#FFFFFF' }}>
                   <BarChart
                     data={topClientes}
                     layout="vertical"
@@ -302,7 +302,7 @@ export default function DashboardReportes({ operaciones }: Props) {
             {/* Estado detallado — barras verticales */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-sm font-semibold text-gray-700 mb-4">Operaciones por Estado (detalle)</h2>
-              <ResponsiveContainer width="100%" height={210}>
+              <ResponsiveContainer width="100%" height={210} style={{ backgroundColor: '#FFFFFF' }}>
                 <BarChart
                   data={porEstado}
                   margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
@@ -329,7 +329,7 @@ export default function DashboardReportes({ operaciones }: Props) {
                 Operaciones Cargadas por Semana{' '}
                 <span className="text-gray-400 font-normal">(últimas 8)</span>
               </h2>
-              <ResponsiveContainer width="100%" height={210}>
+              <ResponsiveContainer width="100%" height={210} style={{ backgroundColor: '#FFFFFF' }}>
                 <LineChart
                   data={porSemana}
                   margin={{ top: 0, right: 10, bottom: 0, left: -20 }}
