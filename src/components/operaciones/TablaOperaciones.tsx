@@ -44,8 +44,8 @@ interface SenasaPopoverState {
 
 function formatDate(d: string | null): string {
   if (!d) return '—'
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y}`
+  const [, m, day] = d.split('-')
+  return `${day}/${m}`
 }
 
 function formatDateShort(d: string | null): string {
@@ -307,6 +307,106 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         style={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          borderRadius: 4,
+          padding: '2px 3px',
+          margin: '0 -3px',
+          cursor: 'text',
+          minHeight: 20,
+          border: status ? `0.5px solid ${borderColor}` : 'none',
+          background: bgColor,
+          transition: 'background 80ms',
+          overflow: 'hidden',
+          ...(extraStyle ?? {}),
+        }}
+        className={!status ? 'cell-hover' : ''}
+      >
+        <span
+          style={{
+            color: isEmpty ? '#D4D4D4' : undefined,
+            fontSize: 'inherit',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+            flex: 1,
+            textAlign: 'center',
+          }}
+        >
+          {displayValue}
+        </span>
+        {status === 'saving' && (
+          <svg className="animate-spin" style={{ width: 10, height: 10, color: '#9C9A94', flexShrink: 0 }} fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+      </div>
+    )
+  }
+
+  function renderCellLeft(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
+    const key = `${op.id}-${field}`
+    const status = cellStates[key]
+    const isEditing = editing?.id === op.id && editing?.field === field
+    const inputType = FIELD_TYPE[field] ?? 'text'
+
+    if (isEditing) {
+      return (
+        <input
+          autoFocus
+          type={inputType}
+          value={editing.value}
+          onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              suppressBlurRef.current = true
+              commitEdit(editing)
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              suppressBlurRef.current = true
+              setEditing(null)
+            }
+          }}
+          onBlur={() => {
+            if (suppressBlurRef.current) {
+              suppressBlurRef.current = false
+              return
+            }
+            setEditing(prev => {
+              if (prev && prev.id === op.id && prev.field === field) {
+                commitEdit(prev)
+                return null
+              }
+              return prev
+            })
+          }}
+          style={{
+            ...CELL_INPUT_STYLE,
+            ...(extraStyle ?? {}),
+            minWidth: inputType === 'date' ? 110 : 60,
+          }}
+        />
+      )
+    }
+
+    const displayValue = getDisplayValue(op, field)
+    const isEmpty = displayValue === '—'
+
+    let borderColor = 'transparent'
+    let bgColor = 'transparent'
+    if (status === 'saving') { borderColor = '#E8E5DE'; bgColor = 'transparent' }
+    if (status === 'success') { borderColor = '#16A34A'; bgColor = '#DCFCE7' }
+    if (status === 'error')   { borderColor = '#DC2626'; bgColor = '#FEF2F2' }
+
+    return (
+      <div
+        onClick={() => startEdit(op, field)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 4,
           borderRadius: 4,
           padding: '2px 3px',
@@ -374,7 +474,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     return (
       <div
         onClick={e => openSenasaPopover(op, e)}
-        style={{ display: 'flex', alignItems: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20, transition: 'background 80ms', overflow: 'hidden' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20, transition: 'background 80ms', overflow: 'hidden' }}
         className="cell-hover"
       >
         {badge}
@@ -383,7 +483,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   const thStyle: React.CSSProperties = {
-    textAlign: 'left',
+    textAlign: 'center',
     padding: '0 4px 10px',
     fontSize: 12,
     fontWeight: 500,
@@ -395,9 +495,34 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     textOverflow: 'ellipsis',
   }
 
+  const thLeft: React.CSSProperties = { ...thStyle, textAlign: 'left' }
+
+  const stickyEstado: React.CSSProperties = {
+    position: 'sticky',
+    right: 36,
+    zIndex: 1,
+  }
+
+  const stickyLapiz: React.CSSProperties = {
+    position: 'sticky',
+    right: 0,
+    zIndex: 1,
+  }
+
   return (
     <>
-      <style>{`.cell-hover:hover { background: rgba(0,0,0,0.04); }`}</style>
+      <style>{`
+        .cell-hover:hover { background: rgba(0,0,0,0.04); }
+        .table-row-hover:hover { background: #F0F4FF; }
+        .table-row-hover:hover .edit-btn { opacity: 1 !important; }
+        .edit-btn:hover { background: rgba(0,0,0,0.06) !important; color: #0D0D0D !important; }
+        .sticky-estado { position: sticky; right: 36px; background: #FFFFFF; z-index: 1; }
+        .sticky-lapiz  { position: sticky; right: 0px;  background: #FFFFFF; z-index: 1; }
+        .table-row-hover:hover .sticky-estado { background: #F0F4FF; }
+        .table-row-hover:hover .sticky-lapiz  { background: #F0F4FF; }
+        th.sticky-estado { background: #FFFFFF; z-index: 2; }
+        th.sticky-lapiz  { background: #FFFFFF; z-index: 2; }
+      `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Toolbar */}
@@ -534,33 +659,33 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#0D0D0D', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: 60 }} />   {/* Interno */}
-              <col style={{ width: 80 }} />   {/* Recep. */}
-              <col style={{ width: 100 }} />  {/* Cliente */}
-              <col style={{ width: 80 }} />   {/* OC */}
-              <col style={{ width: 90 }} />   {/* Factura */}
-              <col style={{ width: 90 }} />   {/* CRT */}
-              <col style={{ width: 85 }} />   {/* Ped.Fondos */}
-              <col style={{ width: 80 }} />   {/* SENASA */}
-              <col style={{ width: 85 }} />   {/* Est.SENASA */}
-              <col style={{ width: 85 }} />   {/* Ofic. */}
-              <col style={{ width: 90 }} />   {/* N.Desp. */}
-              <col style={{ width: 70 }} />   {/* Aviso */}
-              <col style={{ width: 75 }} />   {/* Nota Ent. */}
-              <col style={{ width: 80 }} />   {/* Liberación */}
-              {tab === 'todas' && <col style={{ width: 90 }} />}  {/* Cargado por */}
-              <col style={{ width: 85 }} />   {/* Estado */}
-              <col style={{ width: 36 }} />   {/* lápiz */}
+              <col style={{ width: 60 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 85 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 85 }} />
+              <col style={{ width: 85 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 75 }} />
+              <col style={{ width: 80 }} />
+              {tab === 'todas' && <col style={{ width: 90 }} />}
+              <col style={{ width: 85 }} />
+              <col style={{ width: 36 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E8E5DE' }}>
                 <th style={thStyle}>Interno</th>
                 <th style={thStyle}>Recep.</th>
-                <th style={thStyle}>Cliente</th>
+                <th style={thLeft}>Cliente</th>
                 <th style={thStyle}>OC</th>
                 <th style={thStyle}>Factura</th>
                 <th style={thStyle}>CRT</th>
-                <th style={thStyle}>Ped.Fondos</th>
+                <th style={thStyle}>Ped. $</th>
                 <th style={thStyle}>SENASA</th>
                 <th style={thStyle}>Est.SENASA</th>
                 <th style={thStyle}>Ofic.</th>
@@ -568,9 +693,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <th style={thStyle}>Aviso</th>
                 <th style={thStyle}>Nota Ent.</th>
                 <th style={thStyle}>Liberación</th>
-                {tab === 'todas' && <th style={thStyle}>Cargado por</th>}
-                <th style={thStyle}>Estado</th>
-                <th style={{ width: 36, padding: '0 4px 10px' }} />
+                {tab === 'todas' && <th style={thLeft}>Cargado por</th>}
+                <th style={{ ...thStyle, ...stickyEstado }} className="sticky-estado">Estado</th>
+                <th style={{ width: 36, padding: '0 4px 10px', ...stickyLapiz }} className="sticky-lapiz" />
               </tr>
             </thead>
             <tbody>
@@ -627,7 +752,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                       style={{ borderBottom: '0.5px solid #E8E5DE', height: 36 }}
                     >
                       {/* Interno + progress */}
-                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }}>
                         <div style={{ fontWeight: 500, ...MONO_STYLE }}>
                           {renderCell(op, 'interno', MONO_STYLE)}
                         </div>
@@ -647,63 +772,63 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         </div>
                       </td>
 
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'recep_doc')}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
-                        {renderCell(op, 'cliente')}
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'left' }}>
+                        {renderCellLeft(op, 'cliente')}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'oc', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'factura', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'crt', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'fecha_pedido_fondos')}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'senasa', MONO_STYLE)}
                       </td>
 
-                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }}>
                         {renderSenasaEstadoCell(op)}
                       </td>
 
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'oficializacion')}
                       </td>
-                      <td style={{ padding: '0 4px', overflow: 'hidden', ...MONO_STYLE, color: '#6B6860' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'despacho', MONO_STYLE)}
                       </td>
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'aviso')}
                       </td>
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'nota_entrega')}
                       </td>
-                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'liberacion')}
                       </td>
 
                       {tab === 'todas' && (
-                        <td style={{ padding: '0 4px', color: '#9C9A94', overflow: 'hidden', fontSize: 11 }}>
+                        <td style={{ padding: '0 4px', color: '#9C9A94', overflow: 'hidden', fontSize: 11, textAlign: 'left' }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                             {op.created_by_email ?? '—'}
                           </span>
                         </td>
                       )}
 
-                      <td style={{ padding: '0 4px', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }} className="sticky-estado">
                         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 500, ...estadoStyle }}>
                           {estado}
                         </span>
                       </td>
 
-                      <td style={{ padding: '0 2px', overflow: 'hidden' }}>
+                      <td style={{ padding: '0 2px', overflow: 'hidden', textAlign: 'center' }} className="sticky-lapiz">
                         <button
                           onClick={() => setEditModalOp(op)}
                           title="Editar"
@@ -734,13 +859,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             </tbody>
           </table>
         </div>
-
-        {/* Row hover + edit button visibility via CSS */}
-        <style>{`
-          .table-row-hover:hover { background: #FAFAF8; }
-          .table-row-hover:hover .edit-btn { opacity: 1 !important; }
-          .edit-btn:hover { background: #F4F4F5 !important; color: #0D0D0D !important; }
-        `}</style>
       </div>
 
       {/* SENASA Popover */}
