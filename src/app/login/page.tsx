@@ -6,6 +6,36 @@ import { createClient } from '@/lib/supabase'
 
 type Mode = 'login' | 'register'
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 36,
+  padding: '0 10px',
+  fontSize: 14,
+  border: '0.5px solid #E8E5DE',
+  borderRadius: 6,
+  outline: 'none',
+  color: '#0D0D0D',
+  background: '#FFFFFF',
+  transition: 'border-color 100ms, box-shadow 100ms',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 500,
+  color: '#6B6860',
+  marginBottom: 4,
+}
+
+function onFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = '#18181B'
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.06)'
+}
+function onBlur(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = '#E8E5DE'
+  e.currentTarget.style.boxShadow = 'none'
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [mode, setMode] = useState<Mode>('login')
@@ -38,7 +68,6 @@ export default function LoginPage() {
       return
     }
 
-    // Check approval server-side to avoid RLS issues with the anon key
     const res = await fetch('/api/check-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,9 +106,7 @@ export default function LoginPage() {
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { nombre },
-      },
+      options: { data: { nombre } },
     })
 
     if (signUpError) {
@@ -98,188 +125,123 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm">
-        {/* Logo / Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF8', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ width: 8, height: 8, background: '#0D0D0D', borderRadius: 2 }} />
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em' }}>
+              Comercio Exterior
+            </span>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900">Comercio Exterior</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestión de Operaciones</p>
+          <p style={{ fontSize: 13, color: '#9C9A94', margin: 0 }}>Gestión de Operaciones</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          {/* Toggle */}
-          <div className="flex rounded-lg border border-gray-200 p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => switchMode('login')}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                mode === 'login'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Iniciar sesión
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('register')}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                mode === 'register'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Crear cuenta
-            </button>
+        <div style={{ background: '#FFFFFF', borderRadius: 10, border: '0.5px solid #E8E5DE', overflow: 'hidden' }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', padding: '12px 16px', borderBottom: '0.5px solid #E8E5DE', gap: 4 }}>
+            {(['login', 'register'] as Mode[]).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMode(m)}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 100ms, color 100ms',
+                  background: mode === m ? '#18181B' : 'transparent',
+                  color: mode === m ? '#FFFFFF' : '#6B6860',
+                }}
+              >
+                {m === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+              </button>
+            ))}
           </div>
 
-          {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="nombre@empresa.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
-                />
-              </div>
+          <div style={{ padding: 24 }}>
+            {mode === 'login' ? (
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label htmlFor="email" style={labelStyle}>Email</label>
+                  <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    required autoComplete="email" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="nombre@empresa.com" />
+                </div>
+                <div>
+                  <label htmlFor="password" style={labelStyle}>Contraseña</label>
+                  <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    required autoComplete="current-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="••••••••" />
+                </div>
 
-              {error && <Alert type="error">{error}</Alert>}
+                {error && <LoginAlert type="error">{error}</LoginAlert>}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {loading ? <Spinner label="Ingresando..." /> : 'Ingresar'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                <input
-                  id="nombre"
-                  type="text"
-                  value={nombre}
-                  onChange={e => setNombre(e.target.value)}
-                  required
-                  autoComplete="name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="Juan García"
-                />
-              </div>
-              <div>
-                <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  id="reg-email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="nombre@empresa.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="reg-password" className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                <input
-                  id="reg-password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
-                <input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
-                />
-              </div>
+                <button type="submit" disabled={loading}
+                  style={{ height: 36, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 120ms', marginTop: 2 }}
+                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#27272A' }}
+                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#18181B' }}>
+                  {loading ? 'Ingresando...' : 'Ingresar'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label htmlFor="nombre" style={labelStyle}>Nombre completo</label>
+                  <input id="nombre" type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                    required autoComplete="name" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="Juan García" />
+                </div>
+                <div>
+                  <label htmlFor="reg-email" style={labelStyle}>Email</label>
+                  <input id="reg-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    required autoComplete="email" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="nombre@empresa.com" />
+                </div>
+                <div>
+                  <label htmlFor="reg-password" style={labelStyle}>Contraseña</label>
+                  <input id="reg-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    required autoComplete="new-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="••••••••" />
+                </div>
+                <div>
+                  <label htmlFor="confirm-password" style={labelStyle}>Confirmar contraseña</label>
+                  <input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                    required autoComplete="new-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    placeholder="••••••••" />
+                </div>
 
-              {error && <Alert type="error">{error}</Alert>}
-              {info && <Alert type="info">{info}</Alert>}
+                {error && <LoginAlert type="error">{error}</LoginAlert>}
+                {info && <LoginAlert type="info">{info}</LoginAlert>}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {loading ? <Spinner label="Creando cuenta..." /> : 'Crear cuenta'}
-              </button>
-            </form>
-          )}
+                <button type="submit" disabled={loading}
+                  style={{ height: 36, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 120ms', marginTop: 2 }}
+                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#27272A' }}
+                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#18181B' }}>
+                  {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-function Alert({ type, children }: { type: 'error' | 'info'; children: React.ReactNode }) {
-  const styles = type === 'error'
-    ? 'bg-red-50 border-red-200 text-red-700'
-    : 'bg-blue-50 border-blue-200 text-blue-700'
+function LoginAlert({ type, children }: { type: 'error' | 'info'; children: React.ReactNode }) {
+  const style: React.CSSProperties = type === 'error'
+    ? { background: '#FEF2F2', border: '0.5px solid #FCA5A5', color: '#DC2626' }
+    : { background: '#EFF6FF', border: '0.5px solid #BFDBFE', color: '#2563EB' }
   return (
-    <div className={`flex items-start gap-2 p-3 border rounded-lg ${styles}`}>
-      {type === 'error' ? (
-        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-        </svg>
-      ) : (
-        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-        </svg>
-      )}
-      <span className="text-sm">{children}</span>
+    <div style={{ ...style, padding: '8px 12px', borderRadius: 6, fontSize: 13 }}>
+      {children}
     </div>
-  )
-}
-
-function Spinner({ label }: { label: string }) {
-  return (
-    <span className="flex items-center justify-center gap-2">
-      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      {label}
-    </span>
   )
 }

@@ -27,10 +27,43 @@ const EMPTY: NuevaOperacion = {
   liberacion: null,
 }
 
-const inputCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const selectCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white'
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 36,
+  padding: '0 10px',
+  fontSize: 14,
+  border: '0.5px solid #E8E5DE',
+  borderRadius: 6,
+  outline: 'none',
+  color: '#0D0D0D',
+  background: '#FFFFFF',
+  transition: 'border-color 100ms, box-shadow 100ms',
+}
 
-// Mini modal for adding a new client/transporte from within the form
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: 'pointer',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 500,
+  color: '#6B6860',
+  marginBottom: 4,
+}
+
+function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
+  e.currentTarget.style.borderColor = '#18181B'
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.06)'
+}
+function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
+  e.currentTarget.style.borderColor = '#E8E5DE'
+  e.currentTarget.style.boxShadow = 'none'
+}
+
 function MiniModal({ title, fields, onSave, onClose }: {
   title: string
   fields: { key: string; label: string; type?: string; required?: boolean }[]
@@ -56,38 +89,42 @@ function MiniModal({ title, fields, onSave, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: 16 }}
+    >
+      <div style={{ background: '#FFFFFF', borderRadius: 10, width: '100%', maxWidth: 380, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '0.5px solid #E8E5DE' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C9A94', display: 'flex', padding: 4, borderRadius: 4 }}>
+            <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSave} className="px-5 py-4 space-y-3">
+        <form onSubmit={handleSave} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {fields.map(f => (
             <div key={f.key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && ' *'}</label>
+              <label style={labelStyle}>{f.label}{f.required && ' *'}</label>
               <input
                 type={f.type ?? 'text'}
                 value={form[f.key]}
                 onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                className={inputCls}
+                style={inputStyle}
+                onFocus={onFocus}
+                onBlur={onBlur}
                 required={f.required}
                 autoFocus={fields.indexOf(f) === 0}
               />
             </div>
           ))}
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
+          {error && <p style={{ fontSize: 12, color: '#DC2626', margin: 0 }}>{error}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4, borderTop: '0.5px solid #E8E5DE', marginTop: 4 }}>
             <button type="button" onClick={onClose}
-              className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+              style={{ padding: '0 14px', height: 32, fontSize: 13, border: '0.5px solid #E8E5DE', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#6B6860' }}>
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400">
+              style={{ padding: '0 14px', height: 32, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer' }}>
               {loading ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
@@ -196,205 +233,150 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
         onClick={handleBackdrop}
+        style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: 16 }}
       >
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-base font-semibold text-gray-900">Nueva Operación</h2>
+        <div style={{ background: '#FFFFFF', borderRadius: 10, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '0.5px solid #E8E5DE' }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: '#0D0D0D', margin: 0 }}>Nueva Operación</h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C9A94', display: 'flex', padding: 4, borderRadius: 4, transition: 'color 100ms' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#0D0D0D' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#9C9A94' }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg style={{ width: 15, height: 15 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 py-5">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Interno */}
+          {/* Body */}
+          <form onSubmit={handleSubmit} style={{ padding: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Interno</label>
-                <input
-                  type="number"
-                  value={form.interno ?? ''}
-                  onChange={e => handleChange('interno', e.target.value)}
-                  className={inputCls}
-                  placeholder="Nº interno"
-                />
+                <label style={labelStyle}>Interno</label>
+                <input type="number" value={form.interno ?? ''} onChange={e => handleChange('interno', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº interno" />
               </div>
 
-              {/* Recep. Doc */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Recep. Documentos</label>
-                <input
-                  type="date"
-                  value={form.recep_doc ?? ''}
-                  onChange={e => handleChange('recep_doc', e.target.value)}
-                  className={inputCls}
-                />
+                <label style={labelStyle}>Recep. Documentos</label>
+                <input type="date" value={form.recep_doc ?? ''} onChange={e => handleChange('recep_doc', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
 
-              {/* Cliente - select */}
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Cliente</label>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Cliente</label>
                 {clientes.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">No hay clientes cargados —</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowNuevoCliente(true)}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
+                    <span style={{ fontSize: 13, color: '#9C9A94' }}>Sin clientes —</span>
+                    <button type="button" onClick={() => setShowNuevoCliente(true)}
+                      style={{ fontSize: 13, color: '#18181B', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       + Agregar uno
                     </button>
                   </div>
                 ) : (
-                  <select
-                    value={form.cliente ?? ''}
-                    onChange={e => handleClienteSelect(e.target.value)}
-                    className={selectCls}
-                  >
-                    <option value="">— Sin cliente —</option>
-                    {clientes.map(c => (
-                      <option key={c.id} value={c.nombre}>{c.nombre}</option>
-                    ))}
-                    <option value="__new__">+ Nuevo cliente</option>
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <select value={form.cliente ?? ''} onChange={e => handleClienteSelect(e.target.value)}
+                      style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
+                      <option value="">— Sin cliente —</option>
+                      {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                      <option value="__new__">+ Nuevo cliente</option>
+                    </select>
+                    <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9C9A94', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 )}
               </div>
 
-              {/* Transporte - select */}
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Transporte</label>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Transporte</label>
                 {transportes.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">No hay transportes cargados —</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowNuevoTransporte(true)}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
+                    <span style={{ fontSize: 13, color: '#9C9A94' }}>Sin transportes —</span>
+                    <button type="button" onClick={() => setShowNuevoTransporte(true)}
+                      style={{ fontSize: 13, color: '#18181B', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       + Agregar uno
                     </button>
                   </div>
                 ) : (
-                  <select
-                    value={form.transporte ?? ''}
-                    onChange={e => handleTransporteSelect(e.target.value)}
-                    className={selectCls}
-                  >
-                    <option value="">— Sin transporte —</option>
-                    {transportes.map(t => (
-                      <option key={t.id} value={t.nombre}>{t.nombre}</option>
-                    ))}
-                    <option value="__new__">+ Nuevo transporte</option>
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <select value={form.transporte ?? ''} onChange={e => handleTransporteSelect(e.target.value)}
+                      style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
+                      <option value="">— Sin transporte —</option>
+                      {transportes.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                      <option value="__new__">+ Nuevo transporte</option>
+                    </select>
+                    <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9C9A94', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 )}
               </div>
 
-              {/* CRT */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">CRT</label>
-                <input
-                  type="text"
-                  value={form.crt ?? ''}
-                  onChange={e => handleChange('crt', e.target.value)}
-                  className={inputCls}
-                  placeholder="Nº CRT"
-                />
+                <label style={labelStyle}>CRT</label>
+                <input type="text" value={form.crt ?? ''} onChange={e => handleChange('crt', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº CRT" />
               </div>
 
-              {/* SENASA */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">SENASA</label>
-                <input
-                  type="text"
-                  value={form.senasa ?? ''}
-                  onChange={e => handleChange('senasa', e.target.value)}
-                  className={inputCls}
-                  placeholder="Nº SENASA"
-                />
+                <label style={labelStyle}>SENASA</label>
+                <input type="text" value={form.senasa ?? ''} onChange={e => handleChange('senasa', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº SENASA" />
               </div>
 
-              {/* N. Despacho */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">N. Despacho</label>
-                <input
-                  type="text"
-                  value={form.despacho ?? ''}
-                  onChange={e => handleChange('despacho', e.target.value)}
-                  className={inputCls}
-                  placeholder="Nº despacho"
-                />
+                <label style={labelStyle}>N. Despacho</label>
+                <input type="text" value={form.despacho ?? ''} onChange={e => handleChange('despacho', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} placeholder="Nº despacho" />
               </div>
 
-              {/* Oficializacion */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Oficialización</label>
-                <input
-                  type="date"
-                  value={form.oficializacion ?? ''}
-                  onChange={e => handleChange('oficializacion', e.target.value)}
-                  className={inputCls}
-                />
+                <label style={labelStyle}>Oficialización</label>
+                <input type="date" value={form.oficializacion ?? ''} onChange={e => handleChange('oficializacion', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
 
-              {/* Aviso */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Aviso</label>
-                <input
-                  type="date"
-                  value={form.aviso ?? ''}
-                  onChange={e => handleChange('aviso', e.target.value)}
-                  className={inputCls}
-                />
+                <label style={labelStyle}>Aviso</label>
+                <input type="date" value={form.aviso ?? ''} onChange={e => handleChange('aviso', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
 
-              {/* Nota Entrega */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nota de Entrega</label>
-                <input
-                  type="date"
-                  value={form.nota_entrega ?? ''}
-                  onChange={e => handleChange('nota_entrega', e.target.value)}
-                  className={inputCls}
-                />
+                <label style={labelStyle}>Nota de Entrega</label>
+                <input type="date" value={form.nota_entrega ?? ''} onChange={e => handleChange('nota_entrega', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
 
-              {/* Liberacion */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Liberación</label>
-                <input
-                  type="date"
-                  value={form.liberacion ?? ''}
-                  onChange={e => handleChange('liberacion', e.target.value)}
-                  className={inputCls}
-                />
+                <label style={labelStyle}>Liberación</label>
+                <input type="date" value={form.liberacion ?? ''} onChange={e => handleChange('liberacion', e.target.value)}
+                  style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
             </div>
 
             {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{error}</p>
+              <div style={{ marginTop: 16, padding: '10px 14px', background: '#FEF2F2', border: '0.5px solid #FCA5A5', borderRadius: 6, fontSize: 13, color: '#DC2626' }}>
+                {error}
               </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24, paddingTop: 20, borderTop: '0.5px solid #E8E5DE' }}>
+              <button type="button" onClick={onClose}
+                style={{ padding: '0 16px', height: 32, fontSize: 13, border: '0.5px solid #E8E5DE', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#6B6860', transition: 'background 100ms' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F4F4F5' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
+              <button type="submit" disabled={loading}
+                style={{ padding: '0 16px', height: 32, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 120ms' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#27272A' }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#18181B' }}>
                 {loading ? 'Guardando...' : 'Guardar operación'}
               </button>
             </div>

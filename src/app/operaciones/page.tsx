@@ -36,9 +36,9 @@ export default async function OperacionesPage() {
   const userRol = perfil?.rol ?? 'operador'
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Header email={user.email} rol={userRol} />
-      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-6 py-6">
+      <main style={{ flex: 1, maxWidth: 1536, margin: '0 auto', width: '100%', padding: '28px 24px' }}>
         <TablaOperaciones userEmail={user.email} userId={user.id} userRol={userRol} />
       </main>
     </div>

@@ -79,18 +79,27 @@ function countDone(op: Operacion): number {
   }).length
 }
 
-const ESTADO_COLORS: Record<string, string> = {
-  'Liberado':   'bg-green-100 text-green-800',
-  'En proceso': 'bg-blue-100 text-blue-800',
-  'Pendiente':  'bg-yellow-100 text-yellow-700',
-}
-
-const SENASA_OPCIONES: { value: SenasaEstado; label: string; emoji: string }[] = [
-  { value: 'pendiente', label: 'Pendiente', emoji: '⬜' },
-  { value: 'retenida',  label: 'Retenida',  emoji: '🟡' },
-  { value: 'liberada',  label: 'Liberada',  emoji: '🟢' },
-  { value: 'vinculada', label: 'Vinculada', emoji: '🔵' },
+const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
+  { value: 'pendiente', label: 'Pendiente' },
+  { value: 'retenida',  label: 'Retenida'  },
+  { value: 'liberada',  label: 'Liberada'  },
+  { value: 'vinculada', label: 'Vinculada' },
 ]
+
+const MONO_STYLE = { fontFamily: 'var(--font-geist-mono, ui-monospace, SFMono-Regular, monospace)', fontSize: 12 }
+
+// Shared input style for inline cell editing
+const CELL_INPUT_STYLE: React.CSSProperties = {
+  width: '100%',
+  padding: '3px 6px',
+  fontSize: 13,
+  border: '0.5px solid #18181B',
+  borderRadius: 4,
+  outline: 'none',
+  background: '#FFFFFF',
+  color: '#0D0D0D',
+  boxShadow: '0 0 0 3px rgba(0,0,0,0.06)',
+}
 
 interface Props {
   userEmail?: string
@@ -172,16 +181,16 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: oldValue } : op))
       setCellStatus(id, field, 'error')
-      setTimeout(() => setCellStatus(id, field, null), 1000)
+      setTimeout(() => setCellStatus(id, field, null), 1200)
     } else {
       setCellStatus(id, field, 'success')
-      setTimeout(() => setCellStatus(id, field, null), 1000)
+      setTimeout(() => setCellStatus(id, field, null), 1200)
     }
   }
 
   function openSenasaPopover(op: Operacion, e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
-    const left = Math.min(rect.left, window.innerWidth - 188)
+    const left = Math.min(rect.left, window.innerWidth - 196)
     setSenasaPopover({
       id: op.id,
       estado: ((op.senasa_estado as SenasaEstado) || 'pendiente'),
@@ -235,7 +244,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   const totalCols = tab === 'todas' ? 14 : 13
 
-  function renderCell(op: Operacion, field: keyof Operacion) {
+  function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
     const status = cellStates[key]
     const isEditing = editing?.id === op.id && editing?.field === field
@@ -272,25 +281,54 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
               return prev
             })
           }}
-          className="w-full px-1.5 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-          style={{ minWidth: inputType === 'date' ? 130 : 80 }}
+          style={{
+            ...CELL_INPUT_STYLE,
+            ...(extraStyle ?? {}),
+            minWidth: inputType === 'date' ? 130 : 72,
+          }}
         />
       )
     }
 
-    let ringCls = ''
-    if (status === 'saving') ringCls = 'bg-gray-50 ring-1 ring-inset ring-gray-300'
-    if (status === 'success') ringCls = 'bg-green-50 ring-1 ring-inset ring-green-400'
-    if (status === 'error')   ringCls = 'bg-red-50 ring-1 ring-inset ring-red-400'
+    const displayValue = getDisplayValue(op, field)
+    const isEmpty = displayValue === '—'
+
+    let borderColor = 'transparent'
+    let bgColor = 'transparent'
+    if (status === 'saving') { borderColor = '#E8E5DE'; bgColor = 'transparent' }
+    if (status === 'success') { borderColor = '#16A34A'; bgColor = '#DCFCE7' }
+    if (status === 'error')   { borderColor = '#DC2626'; bgColor = '#FEF2F2' }
 
     return (
       <div
         onClick={() => startEdit(op, field)}
-        className={`flex items-center gap-1 rounded px-1 -mx-1 cursor-text min-h-[22px] transition-colors ${ringCls} ${!status ? 'hover:bg-blue-50' : ''}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          borderRadius: 4,
+          padding: '2px 4px',
+          margin: '0 -4px',
+          cursor: 'text',
+          minHeight: 22,
+          border: status ? `0.5px solid ${borderColor}` : 'none',
+          background: bgColor,
+          transition: 'background 80ms',
+          ...(extraStyle ?? {}),
+        }}
+        className={!status ? 'cell-hover' : ''}
       >
-        <span className="truncate">{getDisplayValue(op, field)}</span>
+        <span
+          className="truncate"
+          style={{
+            color: isEmpty ? '#D4D4D4' : undefined,
+            fontSize: 'inherit',
+          }}
+        >
+          {displayValue}
+        </span>
         {status === 'saving' && (
-          <svg className="animate-spin w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin" style={{ width: 11, height: 11, color: '#9C9A94', flexShrink: 0 }} fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
@@ -305,14 +343,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
     let badge: React.ReactNode
     if (!estado || estado === 'pendiente') {
-      badge = <span className="text-gray-400">—</span>
+      badge = <span style={{ color: '#D4D4D4' }}>—</span>
     } else if (estado === 'retenida') {
-      badge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Retenida</span>
+      badge = (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#FEF3C7', color: '#D97706' }}>
+          Retenida
+        </span>
+      )
     } else if (estado === 'liberada') {
-      badge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Liberada</span>
+      badge = (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#DCFCE7', color: '#16A34A' }}>
+          Liberada
+        </span>
+      )
     } else {
       badge = (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: '#EFF6FF', color: '#2563EB' }}>
           Vinculada{vinculacion ? ` ${formatDateShort(vinculacion)}` : ''}
         </span>
       )
@@ -321,124 +367,187 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     return (
       <div
         onClick={e => openSenasaPopover(op, e)}
-        className="flex items-center gap-1 rounded px-1 -mx-1 cursor-pointer min-h-[22px] hover:bg-blue-50 transition-colors"
+        style={{ display: 'flex', alignItems: 'center', borderRadius: 4, padding: '2px 4px', margin: '0 -4px', cursor: 'pointer', minHeight: 22, transition: 'background 80ms' }}
+        className="cell-hover"
       >
         {badge}
       </div>
     )
   }
 
+  const thStyle: React.CSSProperties = {
+    textAlign: 'left',
+    padding: '0 16px 10px',
+    fontSize: 11,
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    color: '#9C9A94',
+    whiteSpace: 'nowrap',
+  }
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Operaciones</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {loading ? 'Cargando...' : `${filtradas.length} registro${filtradas.length !== 1 ? 's' : ''}`}
-            </p>
+    <>
+      <style>{`.cell-hover:hover { background: rgba(0,0,0,0.04); }`}</style>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div>
+              <h1 style={{ fontSize: 14, fontWeight: 600, color: '#0D0D0D', margin: 0, letterSpacing: '-0.01em' }}>
+                Operaciones
+              </h1>
+              <p style={{ fontSize: 12, color: '#9C9A94', margin: '2px 0 0' }}>
+                {loading ? 'Cargando...' : `${filtradas.length} registro${filtradas.length !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 2, background: '#F4F4F5', borderRadius: 8, padding: 3 }}>
+              {(['mis', 'todas'] as Tab[]).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 100ms, color 100ms',
+                    background: tab === t ? '#FFFFFF' : 'transparent',
+                    color: tab === t ? '#0D0D0D' : '#6B6860',
+                    boxShadow: tab === t ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  {t === 'mis' ? 'Mis operaciones' : 'Todas'}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex rounded-lg border border-gray-200 p-0.5 bg-white">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Search */}
+            <div style={{ position: 'relative' }}>
+              <svg
+                style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9C9A94', pointerEvents: 'none' }}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                style={{
+                  paddingLeft: 30,
+                  paddingRight: 12,
+                  height: 32,
+                  fontSize: 13,
+                  border: '0.5px solid #E8E5DE',
+                  borderRadius: 6,
+                  outline: 'none',
+                  width: 200,
+                  background: '#FFFFFF',
+                  color: '#0D0D0D',
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#18181B'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.06)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#E8E5DE'; e.currentTarget.style.boxShadow = 'none' }}
+              />
+            </div>
+
+            {/* Refresh */}
             <button
-              type="button"
-              onClick={() => setTab('mis')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                tab === 'mis'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={cargarOperaciones}
+              title="Actualizar"
+              style={{
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '0.5px solid #E8E5DE',
+                borderRadius: 6,
+                background: 'transparent',
+                cursor: 'pointer',
+                color: '#9C9A94',
+                transition: 'color 100ms, background 100ms',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#0D0D0D'; e.currentTarget.style.background = '#F4F4F5' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#9C9A94'; e.currentTarget.style.background = 'transparent' }}
             >
-              Mis operaciones
+              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
+
+            {/* New operation */}
             <button
-              type="button"
-              onClick={() => setTab('todas')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                tab === 'todas'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={() => setModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0 14px',
+                height: 32,
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#FFFFFF',
+                background: '#18181B',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'background 120ms',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#27272A' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#18181B' }}
             >
-              Todas
+              <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva operación
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Buscar cliente, despacho..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg w-56 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+        {error && (
+          <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '0.5px solid #FCA5A5', borderRadius: 6, fontSize: 13, color: '#DC2626' }}>
+            <strong>Error:</strong> {error}
           </div>
+        )}
 
-          <button
-            onClick={cargarOperaciones}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Actualizar"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva operación
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex-1">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        {/* Table — directly on background, no card wrapper */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#0D0D0D' }}>
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Interno</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Recep. Doc</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Cliente</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">CRT</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">SENASA</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Est. SENASA</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Oficialización</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">N. Despacho</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aviso</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nota de entrega</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Liberación</th>
-                {tab === 'todas' && (
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Cargado por</th>
-                )}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Estado</th>
-                <th className="w-10 px-2 py-3" />
+              <tr style={{ borderBottom: '0.5px solid #E8E5DE' }}>
+                <th style={thStyle}>Interno</th>
+                <th style={thStyle}>Recep. Doc</th>
+                <th style={thStyle}>Cliente</th>
+                <th style={thStyle}>CRT</th>
+                <th style={thStyle}>SENASA</th>
+                <th style={thStyle}>Est. SENASA</th>
+                <th style={thStyle}>Oficialización</th>
+                <th style={thStyle}>N. Despacho</th>
+                <th style={thStyle}>Aviso</th>
+                <th style={thStyle}>Nota entrega</th>
+                <th style={thStyle}>Liberación</th>
+                {tab === 'todas' && <th style={thStyle}>Cargado por</th>}
+                <th style={thStyle}>Estado</th>
+                <th style={{ width: 40, padding: '0 8px 10px' }} />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={totalCols} className="px-4 py-12 text-center text-gray-400">
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                  <td colSpan={totalCols} style={{ padding: '48px 16px', textAlign: 'center', color: '#9C9A94' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <svg className="animate-spin" style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
@@ -448,19 +557,19 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 </tr>
               ) : filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={totalCols} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <td colSpan={totalCols} style={{ padding: '64px 16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <svg style={{ width: 32, height: 32, color: '#E8E5DE' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                           d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <p className="text-sm text-gray-400">
+                      <p style={{ fontSize: 13, color: '#9C9A94', margin: 0 }}>
                         {busqueda ? 'Sin resultados para la búsqueda' : 'No hay operaciones cargadas aún'}
                       </p>
                       {!busqueda && (
                         <button
                           onClick={() => setModalOpen(true)}
-                          className="mt-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                          style={{ marginTop: 4, fontSize: 13, color: '#18181B', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 2 }}
                         >
                           + Nueva operación
                         </button>
@@ -474,82 +583,103 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   const pct = (done / 10) * 100
                   const estado = getEstado(op)
 
+                  const estadoStyle: React.CSSProperties = estado === 'Liberado'
+                    ? { background: '#DCFCE7', color: '#16A34A' }
+                    : estado === 'En proceso'
+                    ? { background: '#EFF6FF', color: '#2563EB' }
+                    : { background: '#FEF3C7', color: '#D97706' }
+
                   return (
-                    <tr key={op.id} className="group hover:bg-gray-50 transition-colors">
-                      {/* Interno + progress bar */}
-                      <td className="px-4 py-2 whitespace-nowrap" style={{ minWidth: 90 }}>
-                        <div className="font-medium text-gray-900">
-                          {renderCell(op, 'interno')}
+                    <tr
+                      key={op.id}
+                      className="table-row-hover"
+                      style={{ borderBottom: '0.5px solid #E8E5DE', height: 44 }}
+                    >
+                      {/* Interno + progress */}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 90 }}>
+                        <div style={{ fontWeight: 500, ...MONO_STYLE }}>
+                          {renderCell(op, 'interno', MONO_STYLE)}
                         </div>
                         <div
-                          className="h-1 w-full bg-gray-100 rounded-full mt-1.5"
-                          title={`${done} de 10 pasos completados`}
+                          style={{ height: 2, width: '100%', background: '#E8E5DE', borderRadius: 99, marginTop: 4 }}
+                          title={`${done} de 10 completados`}
                         >
                           <div
-                            className="h-full rounded-full transition-all duration-500"
                             style={{
+                              height: '100%',
+                              borderRadius: 99,
                               width: `${pct}%`,
-                              backgroundColor: pct === 100 ? '#22c55e' : pct > 0 ? '#93c5fd' : 'transparent',
+                              background: pct === 100 ? '#16A34A' : pct > 0 ? '#2563EB' : 'transparent',
+                              transition: 'width 400ms',
                             }}
                           />
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'recep_doc')}
                       </td>
-                      <td className="px-4 py-3 text-gray-900 max-w-[200px]">
+                      <td style={{ padding: '0 16px', maxWidth: 200 }}>
                         {renderCell(op, 'cliente')}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 100 }}>
-                        {renderCell(op, 'crt')}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'crt', MONO_STYLE)}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 100 }}>
-                        {renderCell(op, 'senasa')}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 96, ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'senasa', MONO_STYLE)}
                       </td>
 
-                      {/* EST. SENASA — popover selector */}
-                      <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 110 }}>
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderSenasaEstadoCell(op)}
                       </td>
 
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'oficializacion')}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs" style={{ minWidth: 110 }}>
-                        {renderCell(op, 'despacho')}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap', minWidth: 108, ...MONO_STYLE, color: '#6B6860' }}>
+                        {renderCell(op, 'despacho', MONO_STYLE)}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'aviso')}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'nota_entrega')}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap" style={{ minWidth: 120 }}>
+                      <td style={{ padding: '0 16px', color: '#6B6860', whiteSpace: 'nowrap', minWidth: 110 }}>
                         {renderCell(op, 'liberacion')}
                       </td>
 
                       {tab === 'todas' && (
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs" style={{ minWidth: 140 }}>
+                        <td style={{ padding: '0 16px', color: '#9C9A94', whiteSpace: 'nowrap', minWidth: 140, fontSize: 12 }}>
                           {op.created_by_email ?? '—'}
                         </td>
                       )}
 
-                      {/* Estado badge */}
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ESTADO_COLORS[estado]}`}>
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, ...estadoStyle }}>
                           {estado}
                         </span>
                       </td>
 
-                      {/* Pencil — visible on row hover */}
-                      <td className="px-2 py-3 whitespace-nowrap">
+                      <td style={{ padding: '0 8px', whiteSpace: 'nowrap' }}>
                         <button
                           onClick={() => setEditModalOp(op)}
-                          title="Editar operación"
-                          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                          title="Editar"
+                          className="edit-btn"
+                          style={{
+                            padding: 6,
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: '#9C9A94',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            opacity: 0,
+                            transition: 'opacity 100ms, background 100ms',
+                          }}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
@@ -562,53 +692,98 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             </tbody>
           </table>
         </div>
+
+        {/* Row hover + edit button visibility via CSS */}
+        <style>{`
+          .table-row-hover:hover { background: #FAFAF8; }
+          .table-row-hover:hover .edit-btn { opacity: 1 !important; }
+          .edit-btn:hover { background: #F4F4F5 !important; color: #0D0D0D !important; }
+        `}</style>
       </div>
 
-      {/* EST. SENASA Popover */}
+      {/* SENASA Popover */}
       {senasaPopover && (
         <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setSenasaPopover(null)} />
           <div
-            className="fixed inset-0 z-40"
-            onClick={() => setSenasaPopover(null)}
-          />
-          <div
-            style={{ position: 'fixed', top: senasaPopover.top, left: senasaPopover.left, zIndex: 50 }}
-            className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-44"
+            style={{
+              position: 'fixed',
+              top: senasaPopover.top,
+              left: senasaPopover.left,
+              zIndex: 50,
+              background: '#FFFFFF',
+              border: '0.5px solid #E8E5DE',
+              borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              padding: 6,
+              width: 168,
+            }}
           >
-            <div className="flex flex-col gap-0.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {SENASA_OPCIONES.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setSenasaPopover(prev => prev ? { ...prev, estado: opt.value } : null)}
-                  className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg transition-colors text-left
-                    ${senasaPopover.estado === opt.value
-                      ? 'bg-gray-900 text-white font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '6px 10px',
+                    fontSize: 13,
+                    borderRadius: 4,
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 80ms',
+                    background: senasaPopover.estado === opt.value ? '#18181B' : 'transparent',
+                    color: senasaPopover.estado === opt.value ? '#FFFFFF' : '#0D0D0D',
+                    fontWeight: senasaPopover.estado === opt.value ? 500 : 400,
+                  }}
                 >
-                  <span className="text-base leading-none">{opt.emoji}</span>
-                  <span>{opt.label}</span>
+                  {opt.label}
                 </button>
               ))}
             </div>
 
             {senasaPopover.estado === 'vinculada' && (
-              <div className="mt-2 px-1">
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #E8E5DE' }}>
                 <input
                   type="date"
                   value={senasaPopover.vinculacion}
                   onChange={e => setSenasaPopover(prev => prev ? { ...prev, vinculacion: e.target.value } : null)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 12,
+                    border: '0.5px solid #E8E5DE',
+                    borderRadius: 4,
+                    outline: 'none',
+                    color: '#0D0D0D',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#18181B'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.06)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E8E5DE'; e.currentTarget.style.boxShadow = 'none' }}
                 />
               </div>
             )}
 
-            <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #E8E5DE' }}>
               <button
                 type="button"
                 onClick={saveSenasaEstado}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#FFFFFF',
+                  background: '#18181B',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  transition: 'background 100ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#27272A' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#18181B' }}
               >
                 Guardar
               </button>
@@ -634,6 +809,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           }}
         />
       )}
-    </div>
+    </>
   )
 }

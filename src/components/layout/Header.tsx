@@ -20,61 +20,135 @@ export default function Header({ email, rol }: HeaderProps) {
     router.refresh()
   }
 
-  function navClass(href: string) {
-    const active = pathname === href || pathname.startsWith(href + '/')
-    return `px-3 py-1.5 text-sm rounded-lg transition-colors ${
-      active
-        ? 'text-blue-600 bg-blue-50 font-medium'
-        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-    }`
+  function isActive(href: string) {
+    return pathname === href || pathname.startsWith(href + '/')
   }
 
+  const initials = email
+    ? email.split('@')[0].slice(0, 2).toUpperCase()
+    : '?'
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span className="font-semibold text-gray-900 text-sm">Comercio Exterior</span>
+    <header
+      style={{
+        height: 48,
+        background: 'rgba(255,255,255,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '0.5px solid #E8E5DE',
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1536,
+          margin: '0 auto',
+          padding: '0 24px',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        {/* Left: logo + nav */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, background: '#0D0D0D', borderRadius: 2, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+              Comercio Exterior
+            </span>
           </div>
 
-          <nav className="flex items-center gap-1">
-            <Link href="/operaciones" className={navClass('/operaciones')}>
-              Tablero
-            </Link>
-            <Link href="/reportes" className={navClass('/reportes')}>
-              Reportes
-            </Link>
-            {rol === 'superadmin' && (
-              <Link href="/maestros" className={navClass('/maestros')}>
-                Maestros
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {[
+              { href: '/operaciones', label: 'Tablero' },
+              { href: '/reportes', label: 'Reportes' },
+              ...(rol === 'superadmin' ? [{ href: '/maestros', label: 'Maestros' }] : []),
+              ...(rol === 'superadmin' ? [{ href: '/admin', label: 'Admin' }] : []),
+            ].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                style={{
+                  fontSize: 13,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                  transition: 'background 100ms, color 100ms',
+                  color: isActive(href) ? '#0D0D0D' : '#6B6860',
+                  background: isActive(href) ? '#F4F4F5' : 'transparent',
+                  fontWeight: isActive(href) ? 500 : 400,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {label}
               </Link>
-            )}
-            {rol === 'superadmin' && (
-              <Link href="/admin" className={navClass('/admin')}>
-                Admin
-              </Link>
-            )}
+            ))}
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Right: user pill + logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {email && (
-            <span className="text-sm text-gray-500 hidden sm:block">{email}</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#F4F4F5',
+                borderRadius: 20,
+                padding: '3px 10px 3px 3px',
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  background: '#18181B',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                  letterSpacing: '0.02em',
+                  flexShrink: 0,
+                }}
+              >
+                {initials}
+              </div>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: '#6B6860',
+                  maxWidth: 160,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {email}
+              </span>
+            </div>
           )}
+
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              color: '#9C9A94',
+              padding: '4px 0',
+              transition: 'color 100ms',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#0D0D0D')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#9C9A94')}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
             Salir
           </button>
         </div>
