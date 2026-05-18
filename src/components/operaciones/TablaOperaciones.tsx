@@ -42,6 +42,13 @@ interface SenasaPopoverState {
   left: number
 }
 
+interface CanalPopoverState {
+  id: number
+  canal: string | null
+  top: number
+  left: number
+}
+
 function formatDate(d: string | null): string {
   if (!d) return '—'
   const [, m, day] = d.split('-')
@@ -120,6 +127,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
   const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
+  const [canalPopover, setCanalPopover] = useState<CanalPopoverState | null>(null)
   const suppressBlurRef = useRef(false)
 
   const cargarOperaciones = useCallback(async () => {
@@ -227,6 +235,26 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     }
   }
 
+  function openCanalPopover(op: Operacion, e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const left = Math.min(rect.left, window.innerWidth - 120)
+    setCanalPopover({ id: op.id, canal: op.canal ?? null, top: rect.bottom + 4, left })
+  }
+
+  async function saveCanalEstado() {
+    if (!canalPopover) return
+    const { id, canal } = canalPopover
+    const oldOp = operaciones.find(o => o.id === id)
+    if (!oldOp) return
+
+    setOperaciones(prev => prev.map(op => op.id === id ? { ...op, canal } : op))
+    setCanalPopover(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.from('operaciones').update({ canal }).eq('id', id)
+    if (error) setOperaciones(prev => prev.map(op => op.id === id ? oldOp : op))
+  }
+
   function handleEditModalSaved(updated: Operacion) {
     setOperaciones(prev => prev.map(op => op.id === updated.id ? updated : op))
   }
@@ -244,7 +272,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     )
   })
 
-  const totalCols = tab === 'todas' ? 17 : 16
+  const totalCols = tab === 'todas' ? 18 : 17
 
   function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
@@ -482,6 +510,29 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     )
   }
 
+  function renderCanalCell(op: Operacion) {
+    const canal = op.canal
+    let badge: React.ReactNode
+    if (!canal) {
+      badge = <span style={{ color: '#D4D4D4' }}>—</span>
+    } else if (canal === 'V') {
+      badge = <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#DCFCE7', color: '#16A34A' }}>V</span>
+    } else if (canal === 'R') {
+      badge = <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#FEE2E2', color: '#DC2626' }}>R</span>
+    } else {
+      badge = <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#FEF3C7', color: '#D97706' }}>N</span>
+    }
+    return (
+      <div
+        onClick={e => openCanalPopover(op, e)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20, transition: 'background 80ms', overflow: 'hidden' }}
+        className="cell-hover"
+      >
+        {badge}
+      </div>
+    )
+  }
+
   const thStyle: React.CSSProperties = {
     textAlign: 'center',
     padding: '0 4px 10px',
@@ -670,6 +721,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
               <col style={{ width: 85 }} />
               <col style={{ width: 85 }} />
               <col style={{ width: 90 }} />
+              <col style={{ width: 60 }} />
               <col style={{ width: 70 }} />
               <col style={{ width: 75 }} />
               <col style={{ width: 80 }} />
@@ -690,6 +742,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <th style={{ ...thStyle, cursor: 'help' }} title="Estado SENASA">Est.SENASA</th>
                 <th style={{ ...thStyle, cursor: 'help' }} title="Fecha de oficialización">Ofic.</th>
                 <th style={{ ...thStyle, cursor: 'help' }} title="Número de despacho">Despacho</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Canal aduanero (V=Verde, R=Rojo, N=Naranja)">Canal</th>
                 <th style={thStyle}>Aviso</th>
                 <th style={{ ...thStyle, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
                 <th style={{ ...thStyle, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
@@ -803,6 +856,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                       </td>
                       <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', ...MONO_STYLE, color: '#6B6860' }}>
                         {renderCell(op, 'despacho', MONO_STYLE)}
+                      </td>
+                      <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center' }}>
+                        {renderCanalCell(op)}
                       </td>
                       <td style={{ padding: '0 4px', color: '#6B6860', overflow: 'hidden', textAlign: 'center' }}>
                         {renderCell(op, 'aviso')}
@@ -942,6 +998,69 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   cursor: 'pointer',
                   transition: 'background 100ms',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#27272A' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#18181B' }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Canal Popover */}
+      {canalPopover && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setCanalPopover(null)} />
+          <div
+            style={{
+              position: 'fixed',
+              top: canalPopover.top,
+              left: canalPopover.left,
+              zIndex: 50,
+              background: '#FFFFFF',
+              border: '0.5px solid #E8E5DE',
+              borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              padding: 6,
+              width: 100,
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {([null, 'V', 'R', 'N'] as const).map(val => {
+                const label = val === null ? '—' : val
+                const isSelected = canalPopover.canal === val
+                return (
+                  <button
+                    key={val ?? 'none'}
+                    type="button"
+                    onClick={() => setCanalPopover(prev => prev ? { ...prev, canal: val } : null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      padding: '6px 10px',
+                      fontSize: 13,
+                      borderRadius: 4,
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 80ms',
+                      background: isSelected ? '#18181B' : 'transparent',
+                      color: isSelected ? '#FFFFFF' : '#0D0D0D',
+                      fontWeight: isSelected ? 500 : 400,
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #E8E5DE' }}>
+              <button
+                type="button"
+                onClick={saveCanalEstado}
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 500, color: '#FFFFFF', background: '#18181B', border: 'none', borderRadius: 4, cursor: 'pointer', transition: 'background 100ms' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#27272A' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#18181B' }}
               >

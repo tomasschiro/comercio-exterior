@@ -41,6 +41,7 @@ export interface Operacion {
   senasa: string | null
   senasa_estado: string | null
   senasa_vinculacion: string | null
+  canal: string | null
   despacho: string | null
   oficializacion: string | null
   aviso: string | null

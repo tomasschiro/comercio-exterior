@@ -23,6 +23,7 @@ const EMPTY: NuevaOperacion = {
   senasa: null,
   senasa_estado: null,
   senasa_vinculacion: null,
+  canal: null,
   despacho: null,
   oficializacion: null,
   aviso: null,
