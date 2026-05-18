@@ -680,19 +680,19 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E8E5DE' }}>
                 <th style={thStyle}>Interno</th>
-                <th style={thStyle}>Recep.</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Recepción de documentos">Recep.</th>
                 <th style={thLeft}>Cliente</th>
-                <th style={thStyle}>OC</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Orden de compra del cliente">OC</th>
                 <th style={thStyle}>Factura</th>
-                <th style={thStyle}>CRT</th>
-                <th style={thStyle}>Ped. $</th>
-                <th style={thStyle}>SENASA</th>
-                <th style={thStyle}>Est.SENASA</th>
-                <th style={thStyle}>Ofic.</th>
-                <th style={thStyle}>N.Desp.</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Carta de porte internacional">CRT</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Pedido de fondos">Ped. $</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Número SENASA">SENASA</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Estado SENASA">Est.SENASA</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Fecha de oficialización">Ofic.</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Número de despacho">Despacho</th>
                 <th style={thStyle}>Aviso</th>
-                <th style={thStyle}>Nota Ent.</th>
-                <th style={thStyle}>Liberación</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
+                <th style={{ ...thStyle, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
                 {tab === 'todas' && <th style={thLeft}>Cargado por</th>}
                 <th style={{ ...thStyle, ...stickyEstado }} className="sticky-estado">Estado</th>
                 <th style={{ width: 36, padding: '0 4px 10px', ...stickyLapiz }} className="sticky-lapiz" />
