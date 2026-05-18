@@ -63,7 +63,8 @@ export default function Header({ email, rol }: HeaderProps) {
 
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {[
-              { href: '/operaciones', label: 'Tablero' },
+              { href: '/dashboard', label: 'Dashboard' },
+            { href: '/operaciones', label: 'Operaciones' },
               { href: '/reportes', label: 'Reportes' },
               ...(rol === 'superadmin' ? [{ href: '/maestros', label: 'Maestros' }] : []),
               ...(rol === 'superadmin' ? [{ href: '/admin', label: 'Admin' }] : []),
