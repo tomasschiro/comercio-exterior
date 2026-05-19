@@ -764,7 +764,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   paginated.map(op => {
                     const stripe = getStripeColor(op)
                     const atrasada = isAtrasada(op)
-                    const dias = getDiasEnEtapa(op)
 
                     return (
                       <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 40 }}>
@@ -777,22 +776,17 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 600, color: atrasada ? '#DC2626' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                            style={{ fontWeight: 600, color: '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', ...(atrasada ? { border: '1.5px solid #DC2626', borderRadius: 4, padding: '2px 6px' } : {}) }}
                           >
                             {op.interno ?? '—'}
                           </div>
-                          {atrasada && (
-                            <div style={{ fontSize: 11, color: '#DC2626', marginTop: 1 }} title={`${dias} días sin avance`}>
-                              {dias}d
-                            </div>
-                          )}
                         </td>
 
                         <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'recep_doc')}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-cliente">
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 500, color: '#1C1917' }} className="st-cliente">
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
