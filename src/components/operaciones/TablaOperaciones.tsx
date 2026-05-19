@@ -99,6 +99,8 @@ const MONO: React.CSSProperties = {
   fontWeight: 400,
 }
 
+const DATE_STYLE: React.CSSProperties = { fontWeight: 500, color: '#4B5563', fontSize: 13 }
+
 const CELL_INPUT: React.CSSProperties = {
   width: '100%',
   padding: '2px 4px',
@@ -131,7 +133,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
   const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
-  const [canalPopover, setCanalPopover] = useState<{ id: number; top: number; left: number } | null>(null)
+  const [canalEditing, setCanalEditing] = useState<number | null>(null)
   const [transporteEditing, setTransporteEditing] = useState<number | null>(null)
   const [transporteNombres, setTransporteNombres] = useState<string[]>([])
   const [page, setPage] = useState(1)
@@ -403,19 +405,42 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   function renderCanalCell(op: Operacion) {
-    const CANAL_MAP: Record<string, { label: string; bg: string; color: string; dot: string }> = {
-      V: { label: 'Verde',    bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
-      R: { label: 'Rojo',     bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' },
-      N: { label: 'Naranja',  bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' },
-      A: { label: 'Amarillo', bg: '#FCEBC4', color: '#92400E', dot: '#D97706' },
+    const CANAL_DISPLAY: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+      V: { label: 'Verde',   bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
+      R: { label: 'Rojo',    bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' },
+      N: { label: 'Naranja', bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' },
     }
-    const entry = op.canal && CANAL_MAP[op.canal] ? CANAL_MAP[op.canal] : null
+
+    if (canalEditing === op.id) {
+      return (
+        <select
+          autoFocus
+          defaultValue={op.canal ?? ''}
+          onChange={async e => {
+            const val = e.target.value || null
+            const oldOp = operaciones.find(o => o.id === op.id)
+            if (!oldOp) return
+            setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
+            setCanalEditing(null)
+            const supabase = createClient()
+            const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
+          }}
+          onBlur={() => setCanalEditing(null)}
+          style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
+        >
+          <option value="">—</option>
+          <option value="V">Verde</option>
+          <option value="R">Rojo</option>
+          <option value="N">Naranja</option>
+        </select>
+      )
+    }
+
+    const entry = op.canal && CANAL_DISPLAY[op.canal] ? CANAL_DISPLAY[op.canal] : null
     return (
       <div
-        onClick={e => {
-          const rect = e.currentTarget.getBoundingClientRect()
-          setCanalPopover({ id: op.id, top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 140) })
-        }}
+        onClick={() => setCanalEditing(op.id)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }}
         className="cell-hover"
       >
@@ -794,21 +819,21 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                       <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 40 }}>
 
                         {/* Stripe — 3px inset shadow on left for atrasada rows */}
-                        <td className="col-stripe" style={atrasada ? { boxShadow: 'inset 3px 0 0 #DC2626' } : undefined} />
+                        <td className="col-stripe" style={atrasada ? { boxShadow: 'inset 3px 0 0 #991B1B' } : undefined} />
 
                         {/* Interno — red if atrasada, blue otherwise */}
                         <td style={{ padding: '0 6px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 700, color: atrasada ? '#DC2626' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                            style={{ fontWeight: 700, color: atrasada ? '#991B1B' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
                           >
                             {op.interno ?? '—'}
                           </div>
                         </td>
 
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'recep_doc')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'recep_doc', DATE_STYLE)}
                         </td>
 
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 600, color: '#111827' }} className="st-cliente">
@@ -827,8 +852,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
                           {renderTransporteCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'fecha_pedido_fondos')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'fecha_pedido_fondos', DATE_STYLE)}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'senasa', MONO)}
@@ -836,8 +861,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-estado">
                           {renderSenasaCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'oficializacion')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'oficializacion', DATE_STYLE)}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'despacho', MONO)}
@@ -845,14 +870,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCanalCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'aviso')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'aviso', DATE_STYLE)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'nota_entrega')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'nota_entrega', DATE_STYLE)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
-                          {renderCell(op, 'liberacion')}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
+                          {renderCell(op, 'liberacion', DATE_STYLE)}
                         </td>
 
                         {innerTab === 'todas' && (
@@ -916,52 +941,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           <div className="kbd-group"><Kbd>N</Kbd><span>nueva operación</span></div>
         </div>
       </div>
-
-      {/* ── Canal Popover ── */}
-      {canalPopover && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setCanalPopover(null)} />
-          <div style={{ position: 'fixed', top: canalPopover.top, left: canalPopover.left, zIndex: 50, background: SURFACE, border: '1px solid #E8DFC5', borderRadius: 8, boxShadow: '0 4px 16px rgba(31,27,20,.10)', padding: 6, minWidth: 120 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {([
-                { value: '',  label: 'Sin canal', badge: null },
-                { value: 'V', label: 'Verde',    badge: { bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' } },
-                { value: 'R', label: 'Rojo',     badge: { bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' } },
-                { value: 'N', label: 'Naranja',  badge: { bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' } },
-                { value: 'A', label: 'Amarillo', badge: { bg: '#FCEBC4', color: '#92400E', dot: '#D97706' } },
-              ] as { value: string; label: string; badge: { bg: string; color: string; dot: string } | null }[]).map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={async () => {
-                    const val = opt.value || null
-                    const id = canalPopover.id
-                    const oldOp = operaciones.find(o => o.id === id)
-                    if (!oldOp) return
-                    setOperaciones(prev => prev.map(o => o.id === id ? { ...o, canal: val } : o))
-                    setCanalPopover(null)
-                    const supabase = createClient()
-                    const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', id)
-                    if (error) setOperaciones(prev => prev.map(o => o.id === id ? oldOp : o))
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '5px 8px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', background: 'transparent', color: '#1F1B14', fontWeight: 400, transition: 'background 80ms' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F2ECDC' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                >
-                  {opt.badge ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 8px 1px 6px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: opt.badge.bg, color: opt.badge.color }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: opt.badge.dot, flexShrink: 0 }} />
-                      {opt.label}
-                    </span>
-                  ) : (
-                    <span style={{ color: '#ADA482', fontSize: 12 }}>Sin canal</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── SENASA Popover ── */}
       {senasaPopover && (
