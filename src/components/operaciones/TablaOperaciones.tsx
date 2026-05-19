@@ -93,12 +93,6 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
   { value: 'vinculada', label: 'Vinculada' },
 ]
 
-const MONO: React.CSSProperties = {
-  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-  fontSize: 13,
-  fontWeight: 400,
-}
-
 const DATE_STYLE: React.CSSProperties = { fontWeight: 400, color: '#374151', fontSize: 13 }
 
 const CELL_INPUT: React.CSSProperties = {
@@ -758,7 +752,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 4 }} />    {/* stripe */}
                 <col style={{ width: 62 }} />   {/* interno */}
                 <col style={{ width: 60 }} />   {/* recep */}
-                <col style={{ width: 156 }} />  {/* cliente */}
+                <col style={{ width: 120 }} />  {/* cliente */}
                 <col style={{ width: 66 }} />   {/* oc */}
                 <col style={{ width: 86 }} />   {/* factura */}
                 <col style={{ width: 82 }} />   {/* crt */}
@@ -847,13 +841,13 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
                             style={{
-                              fontWeight: 600,
+                              fontSize: 14,
+                              fontWeight: 700,
                               color: atrasada ? '#991B1B' : '#2563EB',
-                              ...MONO,
                               lineHeight: 1.2,
                               display: 'inline-flex',
                               alignItems: 'center',
-                              ...(atrasada ? { border: '1px solid #991B1B', borderRadius: 4, padding: '1px 5px', margin: '-1px -5px' } : {}),
+                              ...(atrasada ? { border: '1.5px solid #991B1B', borderRadius: 4, padding: '1px 6px', margin: '-1px -6px' } : {}),
                             }}
                           >
                             {op.interno ?? '—'}
@@ -868,14 +862,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
-                          {renderCell(op, 'oc', MONO)}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderCell(op, 'oc')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
-                          {renderCell(op, 'factura', MONO)}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderCell(op, 'factura')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
-                          {renderCell(op, 'crt', MONO)}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderCell(op, 'crt')}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
                           {renderTransporteCell(op)}
@@ -883,8 +877,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
                           {renderCell(op, 'fecha_pedido_fondos', DATE_STYLE)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
-                          {renderCell(op, 'senasa', MONO)}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderCell(op, 'senasa')}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-estado">
                           {renderSenasaCell(op)}
@@ -892,8 +886,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...DATE_STYLE }}>
                           {renderCell(op, 'oficializacion', DATE_STYLE)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
-                          {renderCell(op, 'despacho', MONO)}
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderCell(op, 'despacho')}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCanalCell(op)}
