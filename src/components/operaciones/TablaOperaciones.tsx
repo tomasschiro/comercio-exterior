@@ -563,29 +563,31 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         th.st-action  { background: ${PAGE_BG}; z-index: 3; }
         th.st-estado  { background: ${PAGE_BG}; z-index: 3; }
 
-        /* Segmented control — Mis / Todas */
-        .seg { display: inline-flex; background: #F2ECDC; border: 1px solid #E8DFC5; border-radius: 6px; padding: 2px; gap: 0; }
-        .seg-btn { border: none; background: transparent; color: #4A4332; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; line-height: 1; }
-        .seg-btn.on { background: #FFFFFF; color: #1F1B14; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05); }
+        /* Segmented control — Mis / Todas — pill style igual que chips */
+        .seg { display: inline-flex; gap: 6px; }
+        .seg-btn { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 13px; font-weight: 400; color: #4A4332; cursor: pointer; white-space: nowrap; transition: background 80ms, border-color 80ms, color 80ms; }
+        .seg-btn:hover { background: #F5F1EB; border-color: #D6C9A0; }
+        .seg-btn.on { background: #1F1B14; color: #FFFFFF; border-color: #1F1B14; font-weight: 500; }
+        .seg-btn.on span { color: rgba(255,255,255,0.5); }
 
         /* Chips — Atrasadas, Retenidas, Filtros, Ordenar */
-        .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0 10px 0 8px; border: 1px solid #E8DFC5; border-radius: 100px; background: #F2ECDC; font-size: 12px; color: #4A4332; cursor: pointer; height: 26px; white-space: nowrap; transition: border-color 80ms, background 80ms, box-shadow 80ms; }
-        .chip:hover { background: #EAE3CE; border-color: #D6C9A0; }
-        .chip.active { background: #FFFFFF !important; color: #1F1B14 !important; border-color: #E8DFC5 !important; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05) !important; font-weight: 500 !important; }
-        .chip-count { background: #E8DFC5; border-radius: 100px; padding: 0 6px; font-size: 11px; color: #4A4332; margin-left: 2px; line-height: 1.6; }
-        .chip.active .chip-count { background: #E8DFC5; color: #1F1B14; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 13px; color: #4A4332; cursor: pointer; height: 32px; white-space: nowrap; transition: border-color 80ms, background 80ms; }
+        .chip:hover { background: #F5F1EB; border-color: #D6C9A0; }
+        .chip.active { background: #1F1B14 !important; color: #FFFFFF !important; border-color: #1F1B14 !important; font-weight: 500 !important; }
+        .chip-count { background: rgba(0,0,0,0.07); border-radius: 100px; padding: 1px 7px; font-size: 11px; color: inherit; margin-left: 2px; line-height: 1.5; }
+        .chip.active .chip-count { background: rgba(255,255,255,0.2); color: #FFFFFF; }
 
         /* Toolbar separator */
-        .toolbar-sep { width: 1px; height: 18px; background: #E8DFC5; margin: 0 4px; flex-shrink: 0; }
+        .toolbar-sep { width: 1px; height: 20px; background: #E5E0D8; margin: 0 2px; flex-shrink: 0; }
 
         /* Search box */
-        .search-box { display: flex; align-items: center; gap: 6px; background: #F2ECDC; border: 1px solid #E8DFC5; border-radius: 6px; padding: 0 10px; height: 28px; min-width: 220px; transition: border-color 80ms, background 80ms, box-shadow 80ms; }
-        .search-box:focus-within { background: #FFFFFF; border-color: #1E40AF; box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
-        .search-box input { border: none; background: transparent; outline: none; font-size: 12px; color: #1F1B14; width: 100%; }
+        .search-box { display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #E5E0D8; border-radius: 20px; padding: 0 14px; height: 32px; min-width: 220px; transition: border-color 80ms, box-shadow 80ms; }
+        .search-box:focus-within { border-color: #1E40AF; box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
+        .search-box input { border: none; background: transparent; outline: none; font-size: 13px; color: #1F1B14; width: 100%; }
 
         /* Icon-only toolbar buttons */
-        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #E8DFC5; border-radius: 6px; background: #F2ECDC; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
-        .tbtn-icon:hover { background: #EAE3CE; color: #1F1B14; }
+        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
+        .tbtn-icon:hover { background: #F5F1EB; color: #1F1B14; }
 
         /* Keyboard bar */
         .kbd-bar { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 14px; margin-top: 12px; color: #7A7158; font-size: 11px; background: #FFFFFF; border: 1px solid #E8DFC5; border-radius: 10px; }
@@ -639,19 +641,19 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             { key: 'liberadas',  label: 'Liberadas',                count: liberadas.length  },
           ] as { key: Section; label: string; count: number }[]).map(s => (
             <button key={s.key} onClick={() => setSection(s.key)} style={{
-              padding: '5px 12px 7px', fontSize: 12, fontWeight: section === s.key ? 600 : 500,
+              padding: '6px 14px 8px', fontSize: 14, fontWeight: 500,
               border: 'none', background: 'none', cursor: 'pointer',
-              color: section === s.key ? '#1F1B14' : '#7A7158',
+              color: section === s.key ? '#1F1B14' : '#6B7280',
               borderBottom: section === s.key ? '2px solid #1F1B14' : '2px solid transparent',
               marginBottom: -1, display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'color 100ms',
             }}>
               {s.label}
               <span style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '1px 7px', borderRadius: 100,
-                fontSize: 11, fontWeight: 500, fontVariantNumeric: 'tabular-nums',
-                background: section === s.key ? '#1F1B14' : '#F2ECDC',
-                color: section === s.key ? '#FFFFFF' : '#7A7158',
+                padding: '1px 7px', borderRadius: 20,
+                fontSize: 12, fontWeight: 500, fontVariantNumeric: 'tabular-nums',
+                background: '#1F1B14',
+                color: '#FFFFFF',
               }}>
                 {s.count}
               </span>
@@ -660,7 +662,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         </div>
 
         {/* ── Toolbar ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '6px 0', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '6px 0', marginBottom: 10 }}>
           {/* Segmented: Mis / Todas */}
           <div className="seg">
             <button className={`seg-btn${innerTab === 'mis' ? ' on' : ''}`} onClick={() => setInnerTab('mis')}>
