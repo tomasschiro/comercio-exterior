@@ -99,7 +99,7 @@ const MONO: React.CSSProperties = {
   fontWeight: 400,
 }
 
-const DATE_STYLE: React.CSSProperties = { fontWeight: 500, color: '#4B5563', fontSize: 13 }
+const DATE_STYLE: React.CSSProperties = { fontWeight: 400, color: '#374151', fontSize: 13 }
 
 const CELL_INPUT: React.CSSProperties = {
   width: '100%',
@@ -351,7 +351,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#D1CBC3' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
+        <span style={{ color: isEmpty ? '#C9C3BB' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -393,7 +393,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#D1CBC3' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+        <span style={{ color: isEmpty ? '#C9C3BB' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -411,7 +411,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     const vinculacion = op.senasa_vinculacion
     let badge: React.ReactNode
     if (!estado || estado === 'pendiente') {
-      badge = <span style={{ color: '#D1CBC3' }}>—</span>
+      badge = <span style={{ color: '#C9C3BB' }}>—</span>
     } else if (estado === 'retenida') {
       badge = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 500, background: '#FBDDD4', color: '#991B1B' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />Retenida</span>
     } else if (estado === 'liberada') {
@@ -428,9 +428,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   function renderCanalCell(op: Operacion) {
     const CANAL_DISPLAY: Record<string, { label: string; bg: string; color: string; dot: string }> = {
-      V: { label: 'Verde',   bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
-      R: { label: 'Rojo',    bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' },
-      N: { label: 'Naranja', bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' },
+      V: { label: 'Verde',   bg: '#DCFCE7', color: '#15803D', dot: '#16A34A' },
+      R: { label: 'Rojo',    bg: '#FEE2E2', color: '#991B1B', dot: '#DC2626' },
+      N: { label: 'Naranja', bg: '#FEF3C7', color: '#92400E', dot: '#D97706' },
     }
 
     if (canalEditing === op.id) {
@@ -470,7 +470,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             {entry.label}
           </span>
         ) : (
-          <span style={{ color: '#D1CBC3' }}>—</span>
+          <span style={{ color: '#C9C3BB' }}>—</span>
         )}
       </div>
     )
@@ -502,7 +502,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     }
     return (
       <div onClick={() => setTransporteEditing(op.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20 }} className="cell-hover">
-        <span style={{ color: !op.transporte ? '#D1CBC3' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+        <span style={{ color: !op.transporte ? '#C9C3BB' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {op.transporte ?? '—'}
         </span>
       </div>
@@ -510,7 +510,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   const TH: React.CSSProperties = {
-    textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600,
+    textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
     textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9B9589',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
     background: 'transparent',
@@ -844,7 +844,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 700, color: atrasada ? '#991B1B' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                            style={{ fontWeight: 600, color: atrasada ? '#991B1B' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
                           >
                             {op.interno ?? '—'}
                           </div>
@@ -854,7 +854,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           {renderCell(op, 'recep_doc', DATE_STYLE)}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 600, color: '#111827' }} className="st-cliente">
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 500, color: '#374151' }} className="st-cliente">
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
