@@ -752,7 +752,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 4 }} />    {/* stripe */}
                 <col style={{ width: 62 }} />   {/* interno */}
                 <col style={{ width: 60 }} />   {/* recep */}
-                <col style={{ width: 120 }} />  {/* cliente */}
+                <col style={{ width: 90 }} />   {/* cliente */}
                 <col style={{ width: 66 }} />   {/* oc */}
                 <col style={{ width: 86 }} />   {/* factura */}
                 <col style={{ width: 82 }} />   {/* crt */}
@@ -765,7 +765,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 78 }} />   {/* canal */}
                 <col style={{ width: 60 }} />   {/* aviso */}
                 <col style={{ width: 68 }} />   {/* nota ent */}
-                <col style={{ width: 76 }} />   {/* liberacion */}
+                <col style={{ width: 96 }} />   {/* liberacion */}
                 {innerTab === 'todas' && <col style={{ width: 90 }} />}
                 <col style={{ width: 32 }} />   {/* action */}
               </colgroup>
@@ -844,10 +844,10 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                               fontSize: 14,
                               fontWeight: 700,
                               color: atrasada ? '#991B1B' : '#2563EB',
+                              fontStyle: atrasada ? 'italic' : undefined,
                               lineHeight: 1.2,
                               display: 'inline-flex',
                               alignItems: 'center',
-                              ...(atrasada ? { border: '1.5px solid #991B1B', borderRadius: 4, padding: '1px 6px', margin: '-1px -6px' } : {}),
                             }}
                           >
                             {op.interno ?? '—'}
