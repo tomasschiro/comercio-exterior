@@ -33,10 +33,6 @@ type EditingCell = { id: number; field: keyof Operacion; value: string }
 interface SenasaPopoverState {
   id: number; estado: SenasaEstado; vinculacion: string; top: number; left: number
 }
-interface CanalPopoverState {
-  id: number; canal: string | null; top: number; left: number
-}
-
 const PAGE_SIZE = 15
 const SURFACE = '#FFFFFF'
 const PAGE_BG = '#FAF9F6'
@@ -105,6 +101,7 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
 const MONO: React.CSSProperties = {
   fontFamily: 'ui-monospace, SFMono-Regular, monospace',
   fontSize: 12,
+  fontWeight: 400,
 }
 
 const CELL_INPUT: React.CSSProperties = {
@@ -139,7 +136,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
   const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
-  const [canalPopover, setCanalPopover] = useState<CanalPopoverState | null>(null)
+  const [canalEditing, setCanalEditing] = useState<number | null>(null)
+  const [transporteEditing, setTransporteEditing] = useState<number | null>(null)
+  const [transporteNombres, setTransporteNombres] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [loadedAt, setLoadedAt] = useState<Date>(new Date())
   const [timeAgoStr, setTimeAgoStr] = useState('hace un momento')
@@ -165,6 +164,12 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }, [])
 
   useEffect(() => { cargarOperaciones() }, [cargarOperaciones])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('transportes').select('nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setTransporteNombres((data ?? []).map((t: { nombre: string }) => t.nombre)))
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => setTimeAgoStr(getTimeAgo(loadedAt)), 60000)
@@ -246,24 +251,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (error) setOperaciones(prev => prev.map(op => op.id === id ? oldOp : op))
   }
 
-  function openCanalPopover(op: Operacion, e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const left = Math.min(rect.left, window.innerWidth - 130)
-    setCanalPopover({ id: op.id, canal: op.canal ?? null, top: rect.bottom + 4, left })
-  }
-
-  async function saveCanalEstado() {
-    if (!canalPopover) return
-    const { id, canal } = canalPopover
-    const oldOp = operaciones.find(o => o.id === id)
-    if (!oldOp) return
-    setOperaciones(prev => prev.map(op => op.id === id ? { ...op, canal } : op))
-    setCanalPopover(null)
-    const supabase = createClient()
-    const { error } = await supabase.from('operaciones').update({ canal }).eq('id', id)
-    if (error) setOperaciones(prev => prev.map(op => op.id === id ? oldOp : op))
-  }
-
   async function handlePanelSave(updated: Operacion) {
     const oldOp = operaciones.find(o => o.id === updated.id)
     if (!oldOp) return
@@ -313,7 +300,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
   const totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE))
   const paginated = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalCols = innerTab === 'todas' ? 19 : 18
+  const totalCols = innerTab === 'todas' ? 20 : 19
 
   function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
@@ -344,7 +331,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#C4BDB5' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
+        <span style={{ color: isEmpty ? '#D1CBC3' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -386,7 +373,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#C4BDB5' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+        <span style={{ color: isEmpty ? '#D1CBC3' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -404,7 +391,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     const vinculacion = op.senasa_vinculacion
     let badge: React.ReactNode
     if (!estado || estado === 'pendiente') {
-      badge = <span style={{ color: '#ADA482' }}>—</span>
+      badge = <span style={{ color: '#D1CBC3' }}>—</span>
     } else if (estado === 'retenida') {
       badge = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 500, background: '#FBDDD4', color: '#991B1B' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />Retenida</span>
     } else if (estado === 'liberada') {
@@ -420,30 +407,92 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   function renderCanalCell(op: Operacion) {
-    const canal = op.canal
     const CANAL_MAP: Record<string, { label: string; bg: string; color: string; dot?: string }> = {
       V: { label: 'Verde',    bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
       R: { label: 'Rojo',     bg: '#FBDDD4', color: '#991B1B' },
       N: { label: 'Naranja',  bg: '#FDE6CB', color: '#9A3412' },
       A: { label: 'Amarillo', bg: '#FCEBC4', color: '#92400E' },
     }
-    const entry = canal && CANAL_MAP[canal] ? CANAL_MAP[canal] : null
+
+    if (canalEditing === op.id) {
+      return (
+        <select
+          autoFocus
+          defaultValue={op.canal ?? ''}
+          onChange={async e => {
+            const val = e.target.value || null
+            const oldOp = operaciones.find(o => o.id === op.id)
+            if (!oldOp) return
+            setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
+            setCanalEditing(null)
+            const supabase = createClient()
+            const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
+          }}
+          onBlur={() => setCanalEditing(null)}
+          style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
+        >
+          <option value="">—</option>
+          <option value="V">Verde</option>
+          <option value="R">Rojo</option>
+          <option value="N">Naranja</option>
+          <option value="A">Amarillo</option>
+        </select>
+      )
+    }
+
+    const entry = op.canal && CANAL_MAP[op.canal] ? CANAL_MAP[op.canal] : null
     return (
-      <div onClick={e => openCanalPopover(op, e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
+      <div onClick={() => setCanalEditing(op.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
         {entry ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 500, background: entry.bg, color: entry.color }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: entry.bg, color: entry.color }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot ?? 'currentColor', flexShrink: 0, display: 'inline-block' }} />
             {entry.label}
           </span>
         ) : (
-          <span style={{ color: '#ADA482' }}>—</span>
+          <span style={{ color: '#D1CBC3' }}>—</span>
         )}
       </div>
     )
   }
 
+  function renderTransporteCell(op: Operacion) {
+    if (transporteEditing === op.id) {
+      return (
+        <select
+          autoFocus
+          defaultValue={op.transporte ?? ''}
+          onChange={async e => {
+            const val = e.target.value || null
+            const oldOp = operaciones.find(o => o.id === op.id)
+            if (!oldOp) return
+            setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, transporte: val } : o))
+            setTransporteEditing(null)
+            const supabase = createClient()
+            const { error } = await supabase.from('operaciones').update({ transporte: val }).eq('id', op.id)
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
+          }}
+          onBlur={() => setTransporteEditing(null)}
+          style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
+        >
+          <option value="">—</option>
+          {transporteNombres.map(n => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      )
+    }
+    return (
+      <div onClick={() => setTransporteEditing(op.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20 }} className="cell-hover">
+        <span style={{ color: !op.transporte ? '#D1CBC3' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+          {op.transporte ?? '—'}
+        </span>
+      </div>
+    )
+  }
+
   const TH: React.CSSProperties = {
-    textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
+    textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600,
     textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9B9589',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
     background: 'transparent',
@@ -693,6 +742,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 66 }} />   {/* oc */}
                 <col style={{ width: 86 }} />   {/* factura */}
                 <col style={{ width: 82 }} />   {/* crt */}
+                <col style={{ width: 110 }} />  {/* transporte */}
                 <col style={{ width: 60 }} />   {/* ped. $ */}
                 <col style={{ width: 64 }} />   {/* senasa */}
                 <col style={{ width: 100 }} />  {/* est. senasa */}
@@ -714,6 +764,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   <th style={{ ...TH, cursor: 'help' }} title="Orden de compra del cliente">OC</th>
                   <th style={TH}>Factura</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Carta de porte internacional">CRT</th>
+                  <th style={{ ...TH, cursor: 'help' }} title="Empresa de transporte">Transporte</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Pedido de fondos">Ped. $</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Número SENASA">SENASA</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Estado SENASA" className="st-estado">Est. SENASA</th>
@@ -776,54 +827,57 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 600, color: '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', ...(atrasada ? { border: '1.5px solid #DC2626', borderRadius: 4, padding: '2px 6px' } : {}) }}
+                            style={{ fontWeight: 700, color: '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', ...(atrasada ? { border: '1.5px solid #DC2626', borderRadius: 4, padding: '2px 6px' } : {}) }}
                           >
                             {op.interno ?? '—'}
                           </div>
                         </td>
 
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'recep_doc')}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 500, color: '#1C1917' }} className="st-cliente">
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 600, color: '#111827' }} className="st-cliente">
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'oc', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'factura', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'crt', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', color: '#374151' }}>
+                          {renderTransporteCell(op)}
+                        </td>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'fecha_pedido_fondos')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'senasa', MONO)}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-estado">
                           {renderSenasaCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'oficializacion')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#374151' }}>
                           {renderCell(op, 'despacho', MONO)}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCanalCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'aviso')}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'nota_entrega')}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#374151', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'liberacion')}
                         </td>
 
@@ -914,34 +968,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8DFC5' }}>
               <button type="button" onClick={saveSenasaEstado}
-                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 500, color: '#FFFFFF', background: '#1F1B14', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#000000' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#1F1B14' }}
-              >Guardar</button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ── Canal Popover ── */}
-      {canalPopover && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setCanalPopover(null)} />
-          <div style={{ position: 'fixed', top: canalPopover.top, left: canalPopover.left, zIndex: 50, background: SURFACE, border: '1px solid #E8DFC5', borderRadius: 8, boxShadow: '0 4px 16px rgba(31,27,20,.10)', padding: 6, width: 120 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {([null, 'V', 'R', 'N', 'A'] as const).map(val => {
-                const labels: Record<string, string> = { V: 'Verde', R: 'Rojo', N: 'Naranja', A: 'Amarillo' }
-                const isSelected = canalPopover.canal === val
-                return (
-                  <button key={val ?? 'none'} type="button"
-                    onClick={() => setCanalPopover(prev => prev ? { ...prev, canal: val } : null)}
-                    style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 80ms', background: isSelected ? '#1F1B14' : 'transparent', color: isSelected ? '#FFFFFF' : '#1F1B14', fontWeight: isSelected ? 500 : 400 }}
-                  >{val === null ? '—' : labels[val]}</button>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8DFC5' }}>
-              <button type="button" onClick={saveCanalEstado}
                 style={{ padding: '5px 12px', fontSize: 12, fontWeight: 500, color: '#FFFFFF', background: '#1F1B14', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#000000' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#1F1B14' }}
