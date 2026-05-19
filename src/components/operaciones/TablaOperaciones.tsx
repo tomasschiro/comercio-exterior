@@ -145,19 +145,27 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
     setError('')
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('operaciones')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) setError(error.message)
-    else {
-      setOperaciones(data || [])
-      const now = new Date()
-      setLoadedAt(now)
-      setTimeAgoStr(getTimeAgo(now))
+    try {
+      const supabase = createClient()
+      console.log('cargarOperaciones: llamando a Supabase...')
+      const { data, error } = await supabase
+        .from('operaciones')
+        .select('*')
+        .order('created_at', { ascending: false })
+      console.log('cargarOperaciones: respuesta:', { count: data?.length, error })
+      if (error) setError(error.message)
+      else {
+        setOperaciones(data || [])
+        const now = new Date()
+        setLoadedAt(now)
+        setTimeAgoStr(getTimeAgo(now))
+      }
+    } catch (e) {
+      console.error('cargarOperaciones: excepción:', e)
+      setError(e instanceof Error ? e.message : 'Error desconocido al cargar datos')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => { cargarOperaciones() }, [cargarOperaciones])
