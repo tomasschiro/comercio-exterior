@@ -419,15 +419,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           defaultValue={oldCanal ?? ''}
           onChange={async e => {
             const val = (e.target.value as string) || null
+            console.log('Canal seleccionado:', val)
             // 1. Optimistic update — update only the canal field, preserve everything else
             setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
+            console.log('Estado actualizado (optimistic)')
             // 2. Close the select immediately so the badge renders with the new value
             setCanalEditing(null)
             // 3. Persist to Supabase
+            console.log('Guardando canal:', val)
             const supabase = createClient()
-            const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
+            const { data, error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id).select()
+            console.log('Respuesta Supabase:', data, error)
             // 4. Only revert the canal field if Supabase rejected the update
-            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: oldCanal } : o))
+            if (error) {
+              console.log('Error — revirtiendo a:', oldCanal)
+              setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: oldCanal } : o))
+            }
           }}
           onBlur={() => setTimeout(() => setCanalEditing(null), 150)}
           style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
