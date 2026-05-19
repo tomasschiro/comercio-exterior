@@ -426,7 +426,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
             if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
           }}
-          onBlur={() => setCanalEditing(null)}
+          onBlur={() => setTimeout(() => setCanalEditing(null), 150)}
           style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
         >
           <option value="">—</option>
