@@ -131,7 +131,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellStatus>>({})
   const [senasaPopover, setSenasaPopover] = useState<SenasaPopoverState | null>(null)
-  const [canalEditing, setCanalEditing] = useState<number | null>(null)
+  const [canalPopover, setCanalPopover] = useState<{ id: number; top: number; left: number } | null>(null)
   const [transporteEditing, setTransporteEditing] = useState<number | null>(null)
   const [transporteNombres, setTransporteNombres] = useState<string[]>([])
   const [page, setPage] = useState(1)
@@ -187,15 +187,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda])
 
-  useEffect(() => {
-    if (canalEditing === null) return
-    function handleOutside(e: MouseEvent) {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-canal-select]')) setCanalEditing(null)
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [canalEditing])
 
   function setCellStatus(id: number, field: string, status: CellStatus | null) {
     const key = `${id}-${field}`
@@ -412,47 +403,25 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }
 
   function renderCanalCell(op: Operacion) {
-    const CANAL_MAP: Record<string, { label: string; bg: string; color: string; dot?: string }> = {
+    const CANAL_MAP: Record<string, { label: string; bg: string; color: string; dot: string }> = {
       V: { label: 'Verde',    bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
-      R: { label: 'Rojo',     bg: '#FBDDD4', color: '#991B1B' },
-      N: { label: 'Naranja',  bg: '#FDE6CB', color: '#9A3412' },
-      A: { label: 'Amarillo', bg: '#FCEBC4', color: '#92400E' },
+      R: { label: 'Rojo',     bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' },
+      N: { label: 'Naranja',  bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' },
+      A: { label: 'Amarillo', bg: '#FCEBC4', color: '#92400E', dot: '#D97706' },
     }
-
-    if (canalEditing === op.id) {
-      return (
-        <select
-          autoFocus
-          data-canal-select
-          defaultValue={op.canal ?? ''}
-          onChange={async e => {
-            const val = e.target.value || null
-            const oldOp = operaciones.find(o => o.id === op.id)
-            if (!oldOp) return
-            setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
-            setCanalEditing(null)
-            const supabase = createClient()
-            const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
-            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
-          }}
-          onKeyDown={e => { if (e.key === 'Escape') setCanalEditing(null) }}
-          style={{ fontSize: 13, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
-        >
-          <option value="">—</option>
-          <option value="V">Verde</option>
-          <option value="R">Rojo</option>
-          <option value="N">Naranja</option>
-          <option value="A">Amarillo</option>
-        </select>
-      )
-    }
-
     const entry = op.canal && CANAL_MAP[op.canal] ? CANAL_MAP[op.canal] : null
     return (
-      <div data-canal-select onClick={() => setCanalEditing(op.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
+      <div
+        onClick={e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          setCanalPopover({ id: op.id, top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 140) })
+        }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }}
+        className="cell-hover"
+      >
         {entry ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: entry.bg, color: entry.color }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot ?? 'currentColor', flexShrink: 0, display: 'inline-block' }} />
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot, flexShrink: 0, display: 'inline-block' }} />
             {entry.label}
           </span>
         ) : (
@@ -947,6 +916,52 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           <div className="kbd-group"><Kbd>N</Kbd><span>nueva operación</span></div>
         </div>
       </div>
+
+      {/* ── Canal Popover ── */}
+      {canalPopover && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setCanalPopover(null)} />
+          <div style={{ position: 'fixed', top: canalPopover.top, left: canalPopover.left, zIndex: 50, background: SURFACE, border: '1px solid #E8DFC5', borderRadius: 8, boxShadow: '0 4px 16px rgba(31,27,20,.10)', padding: 6, minWidth: 120 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {([
+                { value: '',  label: 'Sin canal', badge: null },
+                { value: 'V', label: 'Verde',    badge: { bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' } },
+                { value: 'R', label: 'Rojo',     badge: { bg: '#FBDDD4', color: '#991B1B', dot: '#DC2626' } },
+                { value: 'N', label: 'Naranja',  badge: { bg: '#FDE6CB', color: '#9A3412', dot: '#EA580C' } },
+                { value: 'A', label: 'Amarillo', badge: { bg: '#FCEBC4', color: '#92400E', dot: '#D97706' } },
+              ] as { value: string; label: string; badge: { bg: string; color: string; dot: string } | null }[]).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    const val = opt.value || null
+                    const id = canalPopover.id
+                    const oldOp = operaciones.find(o => o.id === id)
+                    if (!oldOp) return
+                    setOperaciones(prev => prev.map(o => o.id === id ? { ...o, canal: val } : o))
+                    setCanalPopover(null)
+                    const supabase = createClient()
+                    const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', id)
+                    if (error) setOperaciones(prev => prev.map(o => o.id === id ? oldOp : o))
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '5px 8px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', background: 'transparent', color: '#1F1B14', fontWeight: 400, transition: 'background 80ms' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F2ECDC' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  {opt.badge ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 8px 1px 6px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: opt.badge.bg, color: opt.badge.color }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: opt.badge.dot, flexShrink: 0 }} />
+                      {opt.label}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#ADA482', fontSize: 12 }}>Sin canal</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── SENASA Popover ── */}
       {senasaPopover && (
