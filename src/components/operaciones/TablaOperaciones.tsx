@@ -39,7 +39,8 @@ interface CanalPopoverState {
 
 const PAGE_SIZE = 15
 const SURFACE = '#FFFFFF'
-const ROW_HOVER = '#FBF7E8'
+const PAGE_BG = '#FAF9F6'
+const ROW_HOVER = '#F5F2EE'
 
 function getTimeAgo(date: Date): string {
   const mins = Math.floor((Date.now() - date.getTime()) / 60000)
@@ -90,8 +91,7 @@ function isAtrasada(op: Operacion): boolean {
 
 function getStripeColor(op: Operacion): string | null {
   if (op.liberacion) return null
-  if (op.senasa_estado === 'retenida') return '#991B1B'
-  if (isAtrasada(op)) return '#92400E'
+  if (isAtrasada(op)) return '#DC2626'
   return null
 }
 
@@ -344,7 +344,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#ADA482' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
+        <span style={{ color: isEmpty ? '#C4BDB5' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -386,7 +386,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#ADA482' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+        <span style={{ color: isEmpty ? '#C4BDB5' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -421,8 +421,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
   function renderCanalCell(op: Operacion) {
     const canal = op.canal
-    const CANAL_MAP: Record<string, { label: string; bg: string; color: string }> = {
-      V: { label: 'Verde',    bg: '#E1F1D6', color: '#166534' },
+    const CANAL_MAP: Record<string, { label: string; bg: string; color: string; dot?: string }> = {
+      V: { label: 'Verde',    bg: '#E1F1D6', color: '#15803D', dot: '#16A34A' },
       R: { label: 'Rojo',     bg: '#FBDDD4', color: '#991B1B' },
       N: { label: 'Naranja',  bg: '#FDE6CB', color: '#9A3412' },
       A: { label: 'Amarillo', bg: '#FCEBC4', color: '#92400E' },
@@ -432,7 +432,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       <div onClick={e => openCanalPopover(op, e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
         {entry ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 500, background: entry.bg, color: entry.color }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'currentColor', flexShrink: 0, display: 'inline-block' }} />
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot ?? 'currentColor', flexShrink: 0, display: 'inline-block' }} />
             {entry.label}
           </span>
         ) : (
@@ -442,12 +442,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     )
   }
 
-  /* Table header style — left-aligned per reference */
   const TH: React.CSSProperties = {
-    textAlign: 'left', padding: '8px 10px', fontSize: 10.5, fontWeight: 500,
-    textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7A7158',
+    textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
+    textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9B9589',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-    background: SURFACE,
+    background: 'transparent',
   }
 
   /* Keyboard key — reference style */
@@ -479,7 +478,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       <style>{`
         .cell-hover:hover { background: rgba(31,27,20,.05); }
         .row-h { transition: background 60ms; }
-        .row-h td { background: ${SURFACE}; }
+        .row-h td { background: transparent; }
         .row-h:hover td { background: ${ROW_HOVER} !important; }
         .row-h td.col-stripe { background: transparent !important; }
         .row-h:hover .act-btn { opacity: 1 !important; }
@@ -487,16 +486,19 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .interno-link { cursor: pointer; }
         .interno-link:hover { text-decoration: underline; text-underline-offset: 2px; }
         .col-stripe { width: 4px; min-width: 4px; padding: 0 !important; position: sticky; left: 0; z-index: 4; }
-        .st-interno  { position: sticky; left: 4px;   z-index: 2; background: ${SURFACE}; }
-        .st-cliente  { position: sticky; left: 66px;  z-index: 2; background: ${SURFACE}; }
-        .st-action   { position: sticky; right: 0px;  z-index: 2; background: ${SURFACE}; }
+        .st-interno  { position: sticky; left: 4px;   z-index: 2; background: ${PAGE_BG}; }
+        .st-cliente  { position: sticky; left: 66px;  z-index: 2; background: ${PAGE_BG}; }
+        .st-action   { position: sticky; right: 0px;  z-index: 2; background: ${PAGE_BG}; }
+        .st-estado   { position: sticky; right: 32px; z-index: 2; background: ${PAGE_BG}; }
         .row-h:hover .st-interno  { background: ${ROW_HOVER}; }
         .row-h:hover .st-cliente  { background: ${ROW_HOVER}; }
         .row-h:hover .st-action   { background: ${ROW_HOVER}; }
-        th.col-stripe { background: ${SURFACE}; z-index: 5; }
-        th.st-interno { background: ${SURFACE}; z-index: 3; }
-        th.st-cliente { background: ${SURFACE}; z-index: 3; }
-        th.st-action  { background: ${SURFACE}; z-index: 3; }
+        .row-h:hover .st-estado   { background: ${ROW_HOVER}; }
+        th.col-stripe { background: ${PAGE_BG}; z-index: 5; }
+        th.st-interno { background: ${PAGE_BG}; z-index: 3; }
+        th.st-cliente { background: ${PAGE_BG}; z-index: 3; }
+        th.st-action  { background: ${PAGE_BG}; z-index: 3; }
+        th.st-estado  { background: ${PAGE_BG}; z-index: 3; }
 
         /* Segmented control — Mis / Todas */
         .seg { display: inline-flex; background: #F2ECDC; border: 1px solid #E8DFC5; border-radius: 6px; padding: 2px; gap: 0; }
@@ -504,11 +506,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .seg-btn.on { background: #FFFFFF; color: #1F1B14; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05); }
 
         /* Chips — Atrasadas, Retenidas, Filtros, Ordenar */
-        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border: 1px solid #E8DFC5; border-radius: 100px; background: #FFFFFF; font-size: 12px; color: #4A4332; cursor: pointer; height: 28px; white-space: nowrap; transition: border-color 80ms; }
-        .chip:hover { border-color: #D6C9A0; }
-        .chip.active { background: #1F1B14 !important; color: white !important; border-color: #1F1B14 !important; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border: 1px solid #E8DFC5; border-radius: 100px; background: #F2ECDC; font-size: 12px; color: #4A4332; cursor: pointer; height: 28px; white-space: nowrap; transition: border-color 80ms, background 80ms, box-shadow 80ms; }
+        .chip:hover { background: #EAE3CE; border-color: #D6C9A0; }
+        .chip.active { background: #FFFFFF !important; color: #1F1B14 !important; border-color: #E8DFC5 !important; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05) !important; font-weight: 500 !important; }
         .chip-count { background: #E8DFC5; border-radius: 100px; padding: 0 6px; font-size: 11px; color: #4A4332; margin-left: 2px; line-height: 1.6; }
-        .chip.active .chip-count { background: rgba(255,255,255,.18); color: white; }
+        .chip.active .chip-count { background: #E8DFC5; color: #1F1B14; }
 
         /* Toolbar separator */
         .toolbar-sep { width: 1px; height: 18px; background: #E8DFC5; margin: 0 4px; flex-shrink: 0; }
@@ -519,8 +521,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .search-box input { border: none; background: transparent; outline: none; font-size: 12px; color: #1F1B14; width: 100%; }
 
         /* Icon-only toolbar buttons */
-        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #E8DFC5; border-radius: 6px; background: #FFFFFF; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
-        .tbtn-icon:hover { background: #F2ECDC; color: #1F1B14; }
+        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #E8DFC5; border-radius: 6px; background: #F2ECDC; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
+        .tbtn-icon:hover { background: #EAE3CE; color: #1F1B14; }
 
         /* Keyboard bar */
         .kbd-bar { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 14px; margin-top: 12px; color: #7A7158; font-size: 11px; background: #FFFFFF; border: 1px solid #E8DFC5; border-radius: 10px; }
@@ -680,9 +682,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         )}
 
         {/* ── Table card ── */}
-        <div style={{ background: SURFACE, border: '1px solid #E8DFC5', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05)' }}>
+        <div style={{ background: 'transparent', border: '1px solid #EDE9E3', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05)' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 12.5, color: '#1F1B14', tableLayout: 'fixed', minWidth: 1200 }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, color: '#1C1917', tableLayout: 'fixed', minWidth: 1200 }}>
               <colgroup>
                 <col style={{ width: 4 }} />    {/* stripe */}
                 <col style={{ width: 62 }} />   {/* interno */}
@@ -704,7 +706,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 32 }} />   {/* action */}
               </colgroup>
               <thead>
-                <tr style={{ borderBottom: '1px solid #E8DFC5' }}>
+                <tr style={{ borderBottom: '1px solid #EDE9E3' }}>
                   <th className="col-stripe" />
                   <th style={{ ...TH, paddingLeft: 8 }} className="st-interno">Inter.</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Recepción de documentos">Recep.</th>
@@ -714,7 +716,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   <th style={{ ...TH, cursor: 'help' }} title="Carta de porte internacional">CRT</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Pedido de fondos">Ped. $</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Número SENASA">SENASA</th>
-                  <th style={{ ...TH, cursor: 'help' }} title="Estado SENASA">Est. SENASA</th>
+                  <th style={{ ...TH, cursor: 'help' }} title="Estado SENASA" className="st-estado">Est. SENASA</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Fecha de oficialización">Ofic.</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Número de despacho">Despacho</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Canal aduanero">Canal</th>
@@ -728,7 +730,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={totalCols} style={{ padding: '48px 16px', textAlign: 'center', color: '#7A7158', background: SURFACE }}>
+                    <td colSpan={totalCols} style={{ padding: '48px 16px', textAlign: 'center', color: '#78716C', background: 'transparent' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         <svg className="animate-spin" style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -740,7 +742,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   </tr>
                 ) : filtradas.length === 0 ? (
                   <tr>
-                    <td colSpan={totalCols} style={{ padding: '64px 16px', textAlign: 'center', background: SURFACE }}>
+                    <td colSpan={totalCols} style={{ padding: '64px 16px', textAlign: 'center', background: 'transparent' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                         <svg style={{ width: 32, height: 32, color: '#E8DFC5' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -765,32 +767,28 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                     const dias = getDiasEnEtapa(op)
 
                     return (
-                      <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #E8DFC5', height: 36 }}>
+                      <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 40 }}>
 
-                        {/* Stripe — 2px centered block inside 4px col */}
-                        <td className="col-stripe">
-                          {stripe && (
-                            <span style={{ display: 'block', width: 2, height: '60%', minHeight: 16, margin: 'auto', borderRadius: 2, background: stripe }} />
-                          )}
-                        </td>
+                        {/* Stripe — solid 4px left border */}
+                        <td className="col-stripe" style={stripe ? { background: stripe } : undefined} />
 
                         {/* Interno — blue link, red if atrasada */}
                         <td style={{ padding: '0 6px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 600, color: atrasada ? '#991B1B' : '#1D4ED8', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                            style={{ fontWeight: 600, color: atrasada ? '#DC2626' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
                           >
                             {op.interno ?? '—'}
                           </div>
                           {atrasada && (
-                            <div style={{ fontSize: 11, color: '#991B1B', marginTop: 1 }} title={`${dias} días sin avance`}>
+                            <div style={{ fontSize: 11, color: '#DC2626', marginTop: 1 }} title={`${dias} días sin avance`}>
                               {dias}d
                             </div>
                           )}
                         </td>
 
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'recep_doc')}
                         </td>
 
@@ -798,45 +796,45 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#7A7158' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
                           {renderCell(op, 'oc', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#7A7158' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
                           {renderCell(op, 'factura', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#7A7158' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
                           {renderCell(op, 'crt', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'fecha_pedido_fondos')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#7A7158' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
                           {renderCell(op, 'senasa', MONO)}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-estado">
                           {renderSenasaCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'oficializacion')}
                         </td>
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#7A7158' }}>
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', ...MONO, color: '#78716C' }}>
                           {renderCell(op, 'despacho', MONO)}
                         </td>
                         <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCanalCell(op)}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'aviso')}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'nota_entrega')}
                         </td>
-                        <td style={{ padding: '0 10px', color: '#7A7158', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '0 10px', color: '#78716C', overflow: 'hidden', verticalAlign: 'middle' }}>
                           {renderCell(op, 'liberacion')}
                         </td>
 
                         {innerTab === 'todas' && (
-                          <td style={{ padding: '0 10px', color: '#ADA482', overflow: 'hidden', fontSize: 11, verticalAlign: 'middle' }}>
+                          <td style={{ padding: '0 10px', color: '#C4BDB5', overflow: 'hidden', fontSize: 11, verticalAlign: 'middle' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                               {op.created_by_email ?? '—'}
                             </span>
@@ -861,7 +859,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
           {/* Table footer — inside card, surface-2 background */}
           {!loading && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F2ECDC', borderTop: '1px solid #E8DFC5', color: '#7A7158', fontSize: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F2ECDC', borderTop: '1px solid #EDE9E3', color: '#78716C', fontSize: 12 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <span>{filtradas.length} resultado{filtradas.length !== 1 ? 's' : ''}</span>
                 <span style={{ color: '#ADA482' }}>·</span>
