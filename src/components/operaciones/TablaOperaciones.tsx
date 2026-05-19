@@ -85,11 +85,6 @@ function isAtrasada(op: Operacion): boolean {
   return getDiasEnEtapa(op) > 10
 }
 
-function getStripeColor(op: Operacion): string | null {
-  if (op.liberacion) return null
-  if (isAtrasada(op)) return '#DC2626'
-  return null
-}
 
 const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
   { value: 'pendiente', label: 'Pendiente' },
@@ -100,7 +95,7 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
 
 const MONO: React.CSSProperties = {
   fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 400,
 }
 
@@ -191,6 +186,16 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   }, [])
 
   useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda])
+
+  useEffect(() => {
+    if (canalEditing === null) return
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-canal-select]')) setCanalEditing(null)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [canalEditing])
 
   function setCellStatus(id: number, field: string, status: CellStatus | null) {
     const key = `${id}-${field}`
@@ -418,6 +423,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       return (
         <select
           autoFocus
+          data-canal-select
           defaultValue={op.canal ?? ''}
           onChange={async e => {
             const val = e.target.value || null
@@ -429,8 +435,8 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
             if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
           }}
-          onBlur={() => setCanalEditing(null)}
-          style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
+          onKeyDown={e => { if (e.key === 'Escape') setCanalEditing(null) }}
+          style={{ fontSize: 13, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
         >
           <option value="">—</option>
           <option value="V">Verde</option>
@@ -443,7 +449,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
     const entry = op.canal && CANAL_MAP[op.canal] ? CANAL_MAP[op.canal] : null
     return (
-      <div onClick={() => setCanalEditing(op.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
+      <div data-canal-select onClick={() => setCanalEditing(op.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'pointer', minHeight: 20 }} className="cell-hover">
         {entry ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '1px 7px 1px 5px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: entry.bg, color: entry.color }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: entry.dot ?? 'currentColor', flexShrink: 0, display: 'inline-block' }} />
@@ -813,21 +819,20 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   </tr>
                 ) : (
                   paginated.map(op => {
-                    const stripe = getStripeColor(op)
                     const atrasada = isAtrasada(op)
 
                     return (
                       <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 40 }}>
 
-                        {/* Stripe — solid 4px left border */}
-                        <td className="col-stripe" style={stripe ? { background: stripe } : undefined} />
+                        {/* Stripe — 3px inset shadow on left for atrasada rows */}
+                        <td className="col-stripe" style={atrasada ? { boxShadow: 'inset 3px 0 0 #DC2626' } : undefined} />
 
-                        {/* Interno — blue link, red if atrasada */}
+                        {/* Interno — red if atrasada, blue otherwise */}
                         <td style={{ padding: '0 6px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 700, color: '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', ...(atrasada ? { border: '1.5px solid #DC2626', borderRadius: 4, padding: '2px 6px' } : {}) }}
+                            style={{ fontWeight: 700, color: atrasada ? '#DC2626' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
                           >
                             {op.interno ?? '—'}
                           </div>
