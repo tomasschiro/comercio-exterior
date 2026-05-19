@@ -10,7 +10,8 @@ const ALLOWED_FIELDS = new Set([
 function makeAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
   )
 }
 
@@ -64,11 +65,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Campos no permitidos: ${invalidFields.join(', ')}` }, { status: 400 })
     }
 
-    const { error } = await makeAdminClient()
+    const adminClient = makeAdminClient()
+    console.log('adminClient key prefix:', process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20))
+    const { error } = await adminClient
       .from('operaciones')
       .update(updates)
       .eq('id', id)
-    console.log('update result:', { error: error?.message })
+    console.log('update result:', JSON.stringify({ message: error?.message, code: error?.code, details: error?.details, hint: error?.hint }))
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
