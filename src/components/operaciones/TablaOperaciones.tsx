@@ -212,6 +212,23 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     setEditing({ id: op.id, field, value: getRawValue(op, field) })
   }
 
+  async function updateOperacion(id: number, updates: Record<string, unknown>): Promise<string | null> {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return 'No hay sesión activa'
+    const res = await fetch('/api/operaciones/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id, updates }),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      return (json.error as string) || `Error ${res.status}`
+    }
+    return null
+  }
+
   async function commitEdit(cell: EditingCell) {
     const { id, field, value } = cell
     const oldOp = operaciones.find(o => o.id === id)
@@ -225,8 +242,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: parsed } : null)
     setEditing(null)
     setCellStatus(id, field, 'saving')
-    const supabase = createClient()
-    const { error } = await supabase.from('operaciones').update({ [field]: parsed }).eq('id', id)
+    const error = await updateOperacion(id, { [field]: parsed })
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: oldValue } : op))
       if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: oldValue } : null)
@@ -252,8 +268,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     const updates = { senasa_estado: estado, senasa_vinculacion: estado === 'vinculada' && vinculacion ? vinculacion : null }
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, ...updates } : op))
     setSenasaPopover(null)
-    const supabase = createClient()
-    const { error } = await supabase.from('operaciones').update(updates).eq('id', id)
+    const error = await updateOperacion(id, updates)
     if (error) setOperaciones(prev => prev.map(op => op.id === id ? oldOp : op))
   }
 
@@ -262,8 +277,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (!oldOp) return
     setOperaciones(prev => prev.map(op => op.id === updated.id ? updated : op))
     setPanelOp(updated)
-    const supabase = createClient()
-    const { error } = await supabase.from('operaciones').update({
+    const error = await updateOperacion(updated.id, {
       interno: updated.interno, recep_doc: updated.recep_doc, cliente: updated.cliente,
       transporte: updated.transporte, factura: updated.factura, oc: updated.oc,
       fecha_pedido_fondos: updated.fecha_pedido_fondos, crt: updated.crt,
@@ -271,11 +285,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       senasa_vinculacion: updated.senasa_vinculacion, canal: updated.canal,
       despacho: updated.despacho, oficializacion: updated.oficializacion,
       aviso: updated.aviso, nota_entrega: updated.nota_entrega, liberacion: updated.liberacion,
-    }).eq('id', updated.id)
+    })
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === updated.id ? oldOp : op))
       setPanelOp(oldOp)
-      throw new Error(error.message)
+      throw new Error(error)
     }
   }
 
@@ -427,22 +441,10 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           defaultValue={oldCanal ?? ''}
           onChange={async e => {
             const val = (e.target.value as string) || null
-            console.log('Canal seleccionado:', val)
-            // 1. Optimistic update — update only the canal field, preserve everything else
             setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
-            console.log('Estado actualizado (optimistic)')
-            // 2. Close the select immediately so the badge renders with the new value
             setCanalEditing(null)
-            // 3. Persist to Supabase
-            console.log('Guardando canal:', val)
-            const supabase = createClient()
-            const { data, error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id).select()
-            console.log('Respuesta Supabase:', data, error)
-            // 4. Only revert the canal field if Supabase rejected the update
-            if (error) {
-              console.log('Error — revirtiendo a:', oldCanal)
-              setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: oldCanal } : o))
-            }
+            const error = await updateOperacion(op.id, { canal: val })
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: oldCanal } : o))
           }}
           onBlur={() => setTimeout(() => setCanalEditing(null), 150)}
           style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
@@ -482,13 +484,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           defaultValue={op.transporte ?? ''}
           onChange={async e => {
             const val = e.target.value || null
-            const oldOp = operaciones.find(o => o.id === op.id)
-            if (!oldOp) return
+            const oldTransporte = op.transporte
             setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, transporte: val } : o))
             setTransporteEditing(null)
-            const supabase = createClient()
-            const { error } = await supabase.from('operaciones').update({ transporte: val }).eq('id', op.id)
-            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
+            const error = await updateOperacion(op.id, { transporte: val })
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, transporte: oldTransporte } : o))
           }}
           onBlur={() => setTransporteEditing(null)}
           style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
