@@ -345,13 +345,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     }
     const displayValue = getDisplayValue(op, field)
     const isEmpty = displayValue === '—'
+    const isNA = displayValue === 'n/a'
     let borderColor = 'transparent'; let bgColor = 'transparent'
     if (status === 'saving')  { borderColor = '#E8DFC5' }
     if (status === 'success') { borderColor = '#166534'; bgColor = '#E1F1D6' }
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden', ...(extraStyle ?? {}) }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#C9C3BB' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
+        <span style={{ color: isEmpty || isNA ? '#C9C3BB' : undefined, fontStyle: isNA ? 'italic' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1, textAlign: 'center' }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -387,13 +388,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     }
     const displayValue = getDisplayValue(op, field)
     const isEmpty = displayValue === '—'
+    const isNA = displayValue === 'n/a'
     let borderColor = 'transparent'; let bgColor = 'transparent'
     if (status === 'saving')  { borderColor = '#E8DFC5' }
     if (status === 'success') { borderColor = '#166534'; bgColor = '#E1F1D6' }
     if (status === 'error')   { borderColor = '#991B1B'; bgColor = '#FBDDD4' }
     return (
       <div onClick={() => startEdit(op, field)} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4, padding: '2px 3px', margin: '0 -3px', cursor: 'text', minHeight: 20, border: status ? `1px solid ${borderColor}` : 'none', background: bgColor, transition: 'background 80ms', overflow: 'hidden' }} className={!status ? 'cell-hover' : ''}>
-        <span style={{ color: isEmpty ? '#C9C3BB' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+        <span style={{ color: isEmpty || isNA ? '#C9C3BB' : undefined, fontStyle: isNA ? 'italic' : undefined, fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
           {displayValue}
         </span>
         {status === 'saving' && (
@@ -844,7 +846,15 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           <div
                             className="interno-link"
                             onClick={() => setPanelOp(op)}
-                            style={{ fontWeight: 600, color: atrasada ? '#991B1B' : '#2563EB', ...MONO, lineHeight: 1.2, display: 'inline-flex', alignItems: 'center' }}
+                            style={{
+                              fontWeight: 600,
+                              color: atrasada ? '#991B1B' : '#2563EB',
+                              ...MONO,
+                              lineHeight: 1.2,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              ...(atrasada ? { border: '1px solid #991B1B', borderRadius: 4, padding: '1px 5px', margin: '-1px -5px' } : {}),
+                            }}
                           >
                             {op.interno ?? '—'}
                           </div>
@@ -854,7 +864,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           {renderCell(op, 'recep_doc', DATE_STYLE)}
                         </td>
 
-                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 500, color: '#374151' }} className="st-cliente">
+                        <td style={{ padding: '0 10px', overflow: 'hidden', verticalAlign: 'middle', fontWeight: 600, color: '#111827' }} className="st-cliente">
                           {renderCellLeft(op, 'cliente')}
                         </td>
 
