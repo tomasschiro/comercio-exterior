@@ -412,19 +412,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     }
 
     if (canalEditing === op.id) {
+      const oldCanal = op.canal
       return (
         <select
           autoFocus
-          defaultValue={op.canal ?? ''}
+          defaultValue={oldCanal ?? ''}
           onChange={async e => {
-            const val = e.target.value || null
-            const oldOp = operaciones.find(o => o.id === op.id)
-            if (!oldOp) return
+            const val = (e.target.value as string) || null
+            // 1. Optimistic update — update only the canal field, preserve everything else
             setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: val } : o))
+            // 2. Close the select immediately so the badge renders with the new value
             setCanalEditing(null)
+            // 3. Persist to Supabase
             const supabase = createClient()
             const { error } = await supabase.from('operaciones').update({ canal: val }).eq('id', op.id)
-            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? oldOp : o))
+            // 4. Only revert the canal field if Supabase rejected the update
+            if (error) setOperaciones(prev => prev.map(o => o.id === op.id ? { ...o, canal: oldCanal } : o))
           }}
           onBlur={() => setTimeout(() => setCanalEditing(null), 150)}
           style={{ fontSize: 12, border: '1px solid #1E40AF', borderRadius: 4, padding: '1px 4px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', cursor: 'pointer', width: '100%' }}
