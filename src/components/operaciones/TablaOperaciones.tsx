@@ -93,7 +93,7 @@ const SENASA_OPCIONES: { value: SenasaEstado; label: string }[] = [
   { value: 'vinculada', label: 'Vinculada' },
 ]
 
-const DATE_STYLE: React.CSSProperties = { fontWeight: 400, color: '#374151', fontSize: 13 }
+const DATE_STYLE: React.CSSProperties = { fontWeight: 400, color: '#374151', fontSize: 12 }
 
 const CELL_INPUT: React.CSSProperties = {
   width: '100%',
@@ -569,7 +569,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .seg-btn.on { background: #FFFFFF; color: #1F1B14; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05); }
 
         /* Chips — Atrasadas, Retenidas, Filtros, Ordenar */
-        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border: 1px solid #E8DFC5; border-radius: 100px; background: #F2ECDC; font-size: 12px; color: #4A4332; cursor: pointer; height: 28px; white-space: nowrap; transition: border-color 80ms, background 80ms, box-shadow 80ms; }
+        .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0 10px 0 8px; border: 1px solid #E8DFC5; border-radius: 100px; background: #F2ECDC; font-size: 12px; color: #4A4332; cursor: pointer; height: 26px; white-space: nowrap; transition: border-color 80ms, background 80ms, box-shadow 80ms; }
         .chip:hover { background: #EAE3CE; border-color: #D6C9A0; }
         .chip.active { background: #FFFFFF !important; color: #1F1B14 !important; border-color: #E8DFC5 !important; box-shadow: 0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05) !important; font-weight: 500 !important; }
         .chip-count { background: #E8DFC5; border-radius: 100px; padding: 0 6px; font-size: 11px; color: #4A4332; margin-left: 2px; line-height: 1.6; }
@@ -639,7 +639,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             { key: 'liberadas',  label: 'Liberadas',                count: liberadas.length  },
           ] as { key: Section; label: string; count: number }[]).map(s => (
             <button key={s.key} onClick={() => setSection(s.key)} style={{
-              padding: '8px 14px 10px', fontSize: 13, fontWeight: section === s.key ? 600 : 500,
+              padding: '5px 12px 7px', fontSize: 12, fontWeight: section === s.key ? 600 : 500,
               border: 'none', background: 'none', cursor: 'pointer',
               color: section === s.key ? '#1F1B14' : '#7A7158',
               borderBottom: section === s.key ? '2px solid #1F1B14' : '2px solid transparent',
@@ -747,7 +747,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         {/* ── Table card ── */}
         <div style={{ background: 'transparent', border: '1px solid #EDE9E3', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 0 rgba(31,27,20,.04), 0 1px 2px rgba(31,27,20,.05)' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, color: '#1C1917', tableLayout: 'fixed', minWidth: 1200 }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 12, color: '#1C1917', tableLayout: 'fixed', minWidth: 1200 }}>
               <colgroup>
                 <col style={{ width: 4 }} />    {/* stripe */}
                 <col style={{ width: 62 }} />   {/* interno */}
@@ -844,7 +844,6 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                               fontSize: 14,
                               fontWeight: 700,
                               color: atrasada ? '#991B1B' : '#2563EB',
-                              fontStyle: atrasada ? 'italic' : undefined,
                               lineHeight: 1.2,
                               display: 'inline-flex',
                               alignItems: 'center',
