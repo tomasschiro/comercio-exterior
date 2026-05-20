@@ -99,6 +99,7 @@ const CELL_INPUT: React.CSSProperties = {
   width: '100%',
   padding: '2px 4px',
   fontSize: 12,
+  fontFamily: 'inherit',
   border: '2px solid #1E40AF',
   borderRadius: 4,
   outline: 'none',
