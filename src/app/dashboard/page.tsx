@@ -28,6 +28,15 @@ function fmtDate(d: string | null): string {
 
 // ── design tokens ────────────────────────────────────────
 
+const BADGE: Record<string, { bg: string; color: string }> = {
+  'Liberado':         { bg: '#E1F1D6', color: '#166534' },
+  'En proceso':       { bg: '#D6E1FB', color: '#1E40AF' },
+  'Oficializado':     { bg: '#EDE9FE', color: '#6D28D9' },
+  'Avisado':          { bg: '#FCEBC4', color: '#92400E' },
+  'Nota de entrega':  { bg: '#FCEBC4', color: '#92400E' },
+  'Pendiente':        { bg: '#ECE5D2', color: '#7A7158' },
+}
+
 const PROGRESS: Record<string, number> = {
   'Pendiente': 5,
   'En proceso': 20,
@@ -35,15 +44,6 @@ const PROGRESS: Record<string, number> = {
   'Avisado': 65,
   'Nota de entrega': 82,
   'Liberado': 100,
-}
-
-const BADGE: Record<string, { bg: string; color: string }> = {
-  'Liberado':         { bg: '#DCFCE7', color: '#16A34A' },
-  'En proceso':       { bg: '#EFF6FF', color: '#2563EB' },
-  'Oficializado':     { bg: '#F3E8FF', color: '#7C3AED' },
-  'Avisado':          { bg: '#FEF3C7', color: '#D97706' },
-  'Nota de entrega':  { bg: '#FEF3C7', color: '#D97706' },
-  'Pendiente':        { bg: '#F4F4F5', color: '#6B6860' },
 }
 
 // ── page ─────────────────────────────────────────────────
@@ -126,19 +126,19 @@ export default async function DashboardPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <style>{`
         .kpi-card { transition: box-shadow 150ms, transform 150ms; }
-        .kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+        .kpi-card:hover { box-shadow: 0 4px 20px rgba(31,27,20,0.10); transform: translateY(-1px); }
         .op-row { transition: background 80ms; }
-        .op-row:hover { background: #F4F4F5 !important; }
+        .op-row:hover { background: var(--row-hover) !important; }
         .lib-row { transition: background 80ms; }
-        .lib-row:hover { background: rgba(22,163,74,0.05); }
+        .lib-row:hover { background: rgba(22,101,52,0.06); }
         .prox-row { transition: background 80ms; }
-        .prox-row:hover { background: rgba(217,119,6,0.05); }
-        .ver-link { color: #9C9A94; text-decoration: none; transition: color 100ms; }
-        .ver-link:hover { color: #0D0D0D; }
-        .ver-todas { font-size: 13px; color: #6B6860; text-decoration: none; font-weight: 500; transition: color 100ms; }
-        .ver-todas:hover { color: #0D0D0D; }
-        .cta-btn { display: flex; height: 56px; background: #18181B; border-radius: 8px; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: #FFFFFF; text-decoration: none; letter-spacing: -0.01em; transition: background 120ms; }
-        .cta-btn:hover { background: #27272A; }
+        .prox-row:hover { background: rgba(146,64,14,0.05); }
+        .ver-link { color: var(--ink-4); text-decoration: none; transition: color 100ms; }
+        .ver-link:hover { color: var(--ink-1); }
+        .ver-todas { font-size: 13px; color: var(--ink-3); text-decoration: none; font-weight: 500; transition: color 100ms; }
+        .ver-todas:hover { color: var(--ink-1); }
+        .cta-btn { display: flex; height: 52px; background: var(--ink-1); border-radius: var(--radius-lg); align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: #FFFFFF; text-decoration: none; letter-spacing: -0.01em; transition: background 120ms; }
+        .cta-btn:hover { background: #000; }
         @media (max-width: 900px) {
           .dash-cols { flex-direction: column !important; }
           .dash-left { flex: 1 1 auto !important; width: 100% !important; }
@@ -156,8 +156,8 @@ export default async function DashboardPage() {
 
         {/* ── Heading ── */}
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#0D0D0D', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Dashboard</h1>
-          <p style={{ fontSize: 13, color: '#9C9A94', margin: 0 }}>Resumen ejecutivo de operaciones</p>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Dashboard</h1>
+          <p style={{ fontSize: 13, color: 'var(--ink-4)', margin: 0 }}>Resumen ejecutivo de operaciones</p>
         </div>
 
         {/* ── Section 1: KPIs ── */}
@@ -173,10 +173,10 @@ export default async function DashboardPage() {
 
           {/* Left 60%: últimas operaciones */}
           <div className="dash-left" style={{ flex: '0 0 60%', width: '60%' }}>
-            <div style={{ background: '#FFFFFF', border: '0.5px solid #E8E5DE', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
               {/* Card header */}
-              <div style={{ padding: '14px 20px', borderBottom: '0.5px solid #E8E5DE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D' }}>Últimas operaciones</span>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Últimas operaciones</span>
                 <Link href="/operaciones" className="ver-link" style={{ fontSize: 12 }}>
                   Ver todas →
                 </Link>
@@ -188,13 +188,15 @@ export default async function DashboardPage() {
                   <tr>
                     {['Interno', 'Cliente', 'Factura', 'Estado', 'Progreso'].map(h => (
                       <th key={h} style={{
-                        padding: '10px 16px 8px',
-                        fontSize: 11, fontWeight: 500,
+                        padding: '8px 16px',
+                        fontSize: 10, fontWeight: 500,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        color: '#9C9A94',
+                        letterSpacing: '0.06em',
+                        color: 'var(--ink-3)',
                         textAlign: 'left',
                         whiteSpace: 'nowrap',
+                        background: 'var(--surface)',
+                        borderBottom: '1px solid var(--line)',
                       }}>
                         {h}
                       </th>
@@ -204,7 +206,7 @@ export default async function DashboardPage() {
                 <tbody>
                   {(ultimasOps ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', fontSize: 13, color: '#9C9A94' }}>
+                      <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', fontSize: 13, color: 'var(--ink-4)' }}>
                         Sin operaciones registradas
                       </td>
                     </tr>
@@ -213,35 +215,35 @@ export default async function DashboardPage() {
                     const badge = BADGE[est] ?? BADGE['Pendiente']
                     const pct = PROGRESS[est] ?? 0
                     return (
-                      <tr key={op.id} className="op-row" style={{ borderTop: '0.5px solid #F4F4F5', height: 44 }}>
+                      <tr key={op.id} className="op-row" style={{ borderTop: '1px solid var(--line)', height: 40 }}>
                         <td style={{ padding: '0 16px' }}>
-                          <Link href="/operaciones" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: 44 }}>
-                            <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, color: op.interno ? '#0D0D0D' : '#D4D4D4' }}>
+                          <Link href="/operaciones" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: 40 }}>
+                            <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, fontWeight: 600, color: op.interno ? 'var(--accent-2)' : 'var(--ink-4)' }}>
                               {op.interno ?? '—'}
                             </span>
                           </Link>
                         </td>
                         <td style={{ padding: '0 16px', maxWidth: 140 }}>
-                          <span style={{ fontSize: 13, color: op.cliente ? '#0D0D0D' : '#D4D4D4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: op.cliente ? 'var(--ink-1)' : 'var(--ink-4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                             {op.cliente ?? '—'}
                           </span>
                         </td>
                         <td style={{ padding: '0 16px' }}>
-                          <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, color: op.factura ? '#0D0D0D' : '#D4D4D4' }}>
+                          <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 12, color: op.factura ? 'var(--ink-1)' : 'var(--ink-4)' }}>
                             {op.factura ?? '—'}
                           </span>
                         </td>
                         <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                          <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: badge.bg, color: badge.color }}>
+                          <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: badge.bg, color: badge.color }}>
                             {est}
                           </span>
                         </td>
                         <td style={{ padding: '0 16px 0 8px', minWidth: 88 }}>
-                          <div style={{ height: 4, background: '#F4F4F5', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: 4, background: 'var(--surface-3)', borderRadius: 2, overflow: 'hidden' }}>
                             <div style={{
                               height: '100%',
                               width: `${pct}%`,
-                              background: pct === 100 ? '#16A34A' : '#18181B',
+                              background: pct === 100 ? 'var(--ok)' : 'var(--ink-1)',
                               borderRadius: 2,
                             }} />
                           </div>
@@ -253,7 +255,7 @@ export default async function DashboardPage() {
               </table>
 
               {/* Card footer */}
-              <div style={{ padding: '12px 20px', borderTop: '0.5px solid #E8E5DE' }}>
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', background: 'var(--surface-2)' }}>
                 <Link href="/operaciones" className="ver-todas">
                   Ver todas las operaciones →
                 </Link>
@@ -265,30 +267,30 @@ export default async function DashboardPage() {
           <div className="dash-right" style={{ flex: '0 0 40%', width: '40%', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
             {/* Card: Liberadas recientemente */}
-            <div style={{ background: '#F0FDF4', border: '0.5px solid #BBF7D0', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '0.5px solid #BBF7D0' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#15803D' }}>Liberadas recientemente</span>
+            <div style={{ background: 'var(--ok-bg)', border: '1px solid #B6DBA0', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #B6DBA0' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok)' }}>Liberadas recientemente</span>
               </div>
               {(liberadasReciente ?? []).length === 0 ? (
-                <div style={{ padding: '24px 18px', fontSize: 13, color: '#6B7280', textAlign: 'center' }}>
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)', textAlign: 'center' }}>
                   Sin operaciones liberadas
                 </div>
               ) : (liberadasReciente ?? []).map((op, i) => (
                 <div key={op.id} className="lib-row" style={{
-                  padding: '10px 18px',
-                  borderTop: i > 0 ? '0.5px solid #BBF7D0' : undefined,
+                  padding: '9px 16px',
+                  borderTop: i > 0 ? '1px solid #C8E6B8' : undefined,
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}>
-                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#16A34A', minWidth: 28, flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, fontWeight: 600, color: 'var(--ok)', minWidth: 28, flexShrink: 0 }}>
                     {op.interno ?? '—'}
                   </span>
-                  <span style={{ fontSize: 12, color: '#15803D', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: '#166534', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                     {op.cliente ?? '—'}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#16A34A', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: 'var(--ok)', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {op.despacho ?? '—'}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: 'var(--ink-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     {fmtDate(op.liberacion)}
                   </span>
                 </div>
@@ -296,12 +298,12 @@ export default async function DashboardPage() {
             </div>
 
             {/* Card: Próximas a liberar */}
-            <div style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '0.5px solid #FDE68A' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#92400E' }}>Próximas a liberar</span>
+            <div style={{ background: 'var(--warn-bg)', border: '1px solid #E8CFA0', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #E8CFA0' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)' }}>Próximas a liberar</span>
               </div>
               {(proximasSinLiberar ?? []).length === 0 ? (
-                <div style={{ padding: '24px 18px', fontSize: 13, color: '#6B7280', textAlign: 'center' }}>
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)', textAlign: 'center' }}>
                   Sin operaciones pendientes
                 </div>
               ) : (proximasSinLiberar ?? []).map((op, i) => {
@@ -309,25 +311,25 @@ export default async function DashboardPage() {
                 const isLate = dias > 15
                 return (
                   <div key={op.id} className="prox-row" style={{
-                    padding: '10px 18px',
-                    borderTop: i > 0 ? '0.5px solid #FDE68A' : undefined,
+                    padding: '9px 16px',
+                    borderTop: i > 0 ? '1px solid #E8CFA0' : undefined,
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}>
-                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#D97706', minWidth: 28, flexShrink: 0 }}>
+                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, fontWeight: 600, color: 'var(--warn)', minWidth: 28, flexShrink: 0 }}>
                       {op.interno ?? '—'}
                     </span>
-                    <span style={{ fontSize: 12, color: '#92400E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                    <span style={{ fontSize: 12, color: 'var(--warn)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                       {op.cliente ?? '—'}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: '#D97706', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ fontFamily: 'var(--font-geist-mono, ui-monospace, monospace)', fontSize: 11, color: 'var(--warn)', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {op.despacho ?? '—'}
                     </span>
                     <span style={{
                       fontSize: 11, fontWeight: 600,
-                      color: isLate ? '#DC2626' : '#D97706',
+                      color: isLate ? 'var(--bad)' : 'var(--warn)',
                       whiteSpace: 'nowrap', flexShrink: 0,
-                      padding: '1px 5px', borderRadius: 3,
-                      background: isLate ? '#FEF2F2' : 'transparent',
+                      padding: '1px 6px', borderRadius: 4,
+                      background: isLate ? 'var(--bad-bg)' : 'transparent',
                     }}>
                       {dias}d
                     </span>
@@ -353,9 +355,9 @@ export default async function DashboardPage() {
 type KpiAccent = 'green' | 'yellow' | 'red'
 
 const KPI_ACCENT: Record<KpiAccent, { value: string; noteBg: string; noteColor: string }> = {
-  green:  { value: '#16A34A', noteBg: '#DCFCE7', noteColor: '#16A34A' },
-  yellow: { value: '#D97706', noteBg: '#FEF3C7', noteColor: '#D97706' },
-  red:    { value: '#DC2626', noteBg: '#FEF2F2', noteColor: '#DC2626' },
+  green:  { value: 'var(--ok)',   noteBg: 'var(--ok-bg)',   noteColor: 'var(--ok)'   },
+  yellow: { value: 'var(--warn)', noteBg: 'var(--warn-bg)', noteColor: 'var(--warn)' },
+  red:    { value: 'var(--bad)',  noteBg: 'var(--bad-bg)',  noteColor: 'var(--bad)'  },
 }
 
 function KpiCard({ label, value, accent, note }: {
@@ -368,13 +370,14 @@ function KpiCard({ label, value, accent, note }: {
 
   return (
     <div className="kpi-card" style={{
-      background: '#FFFFFF',
-      border: '0.5px solid #E8E5DE',
-      borderRadius: 10,
-      padding: '20px 20px 18px',
+      background: 'var(--surface)',
+      border: '1px solid var(--line)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '18px 20px 16px',
+      boxShadow: 'var(--shadow-sm)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#6B6860', lineHeight: 1.4 }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-3)', lineHeight: 1.4 }}>{label}</span>
         {note && colors && (
           <span style={{
             fontSize: 10, fontWeight: 600,
@@ -387,8 +390,8 @@ function KpiCard({ label, value, accent, note }: {
         )}
       </div>
       <span style={{
-        fontSize: 30, fontWeight: 700,
-        color: colors?.value ?? '#0D0D0D',
+        fontSize: 28, fontWeight: 700,
+        color: colors?.value ?? 'var(--ink-1)',
         letterSpacing: '-0.03em',
         lineHeight: 1,
       }}>

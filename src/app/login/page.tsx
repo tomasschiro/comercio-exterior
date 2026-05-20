@@ -6,33 +6,36 @@ import { createClient } from '@/lib/supabase'
 
 type Mode = 'login' | 'register'
 
-const inputStyle: React.CSSProperties = {
+const INPUT: React.CSSProperties = {
   width: '100%',
-  height: 36,
+  height: 34,
   padding: '0 10px',
-  fontSize: 14,
-  border: '0.5px solid #E8E5DE',
-  borderRadius: 6,
+  fontSize: 13,
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--radius)',
   outline: 'none',
-  color: '#0D0D0D',
-  background: '#FFFFFF',
+  color: 'var(--ink-1)',
+  background: 'var(--surface)',
+  fontFamily: 'inherit',
   transition: 'border-color 100ms, box-shadow 100ms',
 }
 
-const labelStyle: React.CSSProperties = {
+const LABEL: React.CSSProperties = {
   display: 'block',
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 500,
-  color: '#6B6860',
+  color: 'var(--ink-3)',
   marginBottom: 4,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
 }
 
-function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = '#18181B'
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.06)'
+function onFocusInput(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = 'var(--accent-2)'
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,0.12)'
 }
-function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = '#E8E5DE'
+function onBlurInput(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = 'var(--line)'
   e.currentTarget.style.boxShadow = 'none'
 }
 
@@ -125,23 +128,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF8', padding: 16 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 16 }}>
       <div style={{ width: '100%', maxWidth: 360 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <div style={{ width: 8, height: 8, background: '#0D0D0D', borderRadius: 2 }} />
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em' }}>
-              Comercio Exterior
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 8, height: 8, background: 'var(--ink-1)', borderRadius: 2 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-1)', letterSpacing: '-0.01em' }}>
+              R.M.S Comercio Exterior
             </span>
           </div>
-          <p style={{ fontSize: 13, color: '#9C9A94', margin: 0 }}>Gestión de Operaciones</p>
+          <p style={{ fontSize: 12, color: 'var(--ink-4)', margin: 0 }}>Gestión de Operaciones</p>
         </div>
 
         {/* Card */}
-        <div style={{ background: '#FFFFFF', borderRadius: 10, border: '0.5px solid #E8E5DE', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line)', overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
           {/* Mode toggle */}
-          <div style={{ display: 'flex', padding: '12px 16px', borderBottom: '0.5px solid #E8E5DE', gap: 4 }}>
+          <div style={{ display: 'flex', padding: '10px 12px', borderBottom: '1px solid var(--line)', gap: 4 }}>
             {(['login', 'register'] as Mode[]).map(m => (
               <button
                 key={m}
@@ -149,15 +152,16 @@ export default function LoginPage() {
                 onClick={() => switchMode(m)}
                 style={{
                   flex: 1,
-                  padding: '6px 12px',
-                  fontSize: 13,
+                  padding: '5px 12px',
+                  fontSize: 12,
                   fontWeight: 500,
-                  borderRadius: 6,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   cursor: 'pointer',
+                  fontFamily: 'inherit',
                   transition: 'background 100ms, color 100ms',
-                  background: mode === m ? '#18181B' : 'transparent',
-                  color: mode === m ? '#FFFFFF' : '#6B6860',
+                  background: mode === m ? 'var(--ink-1)' : 'transparent',
+                  color: mode === m ? '#FFFFFF' : 'var(--ink-3)',
                 }}
               >
                 {m === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
@@ -169,63 +173,57 @@ export default function LoginPage() {
             {mode === 'login' ? (
               <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label htmlFor="email" style={labelStyle}>Email</label>
+                  <label htmlFor="email" style={LABEL}>Email</label>
                   <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    required autoComplete="email" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="email" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="nombre@empresa.com" />
                 </div>
                 <div>
-                  <label htmlFor="password" style={labelStyle}>Contraseña</label>
+                  <label htmlFor="password" style={LABEL}>Contraseña</label>
                   <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    required autoComplete="current-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="current-password" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="••••••••" />
                 </div>
 
-                {error && <LoginAlert type="error">{error}</LoginAlert>}
+                {error && <Alert type="error">{error}</Alert>}
 
-                <button type="submit" disabled={loading}
-                  style={{ height: 36, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 120ms', marginTop: 2 }}
-                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#27272A' }}
-                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#18181B' }}>
+                <BtnPrimary type="submit" disabled={loading}>
                   {loading ? 'Ingresando...' : 'Ingresar'}
-                </button>
+                </BtnPrimary>
               </form>
             ) : (
               <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label htmlFor="nombre" style={labelStyle}>Nombre completo</label>
+                  <label htmlFor="nombre" style={LABEL}>Nombre completo</label>
                   <input id="nombre" type="text" value={nombre} onChange={e => setNombre(e.target.value)}
-                    required autoComplete="name" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="name" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="Juan García" />
                 </div>
                 <div>
-                  <label htmlFor="reg-email" style={labelStyle}>Email</label>
+                  <label htmlFor="reg-email" style={LABEL}>Email</label>
                   <input id="reg-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    required autoComplete="email" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="email" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="nombre@empresa.com" />
                 </div>
                 <div>
-                  <label htmlFor="reg-password" style={labelStyle}>Contraseña</label>
+                  <label htmlFor="reg-password" style={LABEL}>Contraseña</label>
                   <input id="reg-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    required autoComplete="new-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="new-password" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="••••••••" />
                 </div>
                 <div>
-                  <label htmlFor="confirm-password" style={labelStyle}>Confirmar contraseña</label>
+                  <label htmlFor="confirm-password" style={LABEL}>Confirmar contraseña</label>
                   <input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                    required autoComplete="new-password" style={inputStyle} onFocus={onFocus} onBlur={onBlur}
+                    required autoComplete="new-password" style={INPUT} onFocus={onFocusInput} onBlur={onBlurInput}
                     placeholder="••••••••" />
                 </div>
 
-                {error && <LoginAlert type="error">{error}</LoginAlert>}
-                {info && <LoginAlert type="info">{info}</LoginAlert>}
+                {error && <Alert type="error">{error}</Alert>}
+                {info && <Alert type="info">{info}</Alert>}
 
-                <button type="submit" disabled={loading}
-                  style={{ height: 36, fontSize: 13, fontWeight: 500, color: '#FFFFFF', background: loading ? '#52525B' : '#18181B', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 120ms', marginTop: 2 }}
-                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#27272A' }}
-                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#18181B' }}>
+                <BtnPrimary type="submit" disabled={loading}>
                   {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-                </button>
+                </BtnPrimary>
               </form>
             )}
           </div>
@@ -235,12 +233,36 @@ export default function LoginPage() {
   )
 }
 
-function LoginAlert({ type, children }: { type: 'error' | 'info'; children: React.ReactNode }) {
-  const style: React.CSSProperties = type === 'error'
-    ? { background: '#FEF2F2', border: '0.5px solid #FCA5A5', color: '#DC2626' }
-    : { background: '#EFF6FF', border: '0.5px solid #BFDBFE', color: '#2563EB' }
+function BtnPrimary({ children, disabled, type }: { children: React.ReactNode; disabled?: boolean; type?: 'submit' | 'button' }) {
   return (
-    <div style={{ ...style, padding: '8px 12px', borderRadius: 6, fontSize: 13 }}>
+    <button
+      type={type ?? 'button'}
+      disabled={disabled}
+      style={{
+        height: 34, fontSize: 13, fontWeight: 500,
+        color: '#FFFFFF',
+        background: disabled ? 'var(--ink-3)' : 'var(--ink-1)',
+        border: 'none',
+        borderRadius: 'var(--radius)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit',
+        transition: 'background 120ms',
+        marginTop: 2,
+      }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#000' }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = 'var(--ink-1)' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Alert({ type, children }: { type: 'error' | 'info'; children: React.ReactNode }) {
+  const style: React.CSSProperties = type === 'error'
+    ? { background: 'var(--bad-bg)', border: '1px solid var(--bad)', color: 'var(--bad)' }
+    : { background: 'var(--info-bg)', border: '1px solid var(--info)', color: 'var(--info)' }
+  return (
+    <div style={{ ...style, padding: '8px 12px', borderRadius: 'var(--radius)', fontSize: 13 }}>
       {children}
     </div>
   )

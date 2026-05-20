@@ -10,7 +10,50 @@ interface Props {
   userRol: string
 }
 
-const inputCls = 'w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+// ── shared styles ─────────────────────────────────────────
+
+const INPUT: React.CSSProperties = {
+  width: '100%',
+  padding: '5px 8px',
+  fontSize: 13,
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--radius)',
+  outline: 'none',
+  color: 'var(--ink-1)',
+  background: 'var(--surface)',
+  fontFamily: 'inherit',
+}
+
+const BTN_PRIMARY: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  padding: '0 12px', height: 28,
+  fontSize: 12, fontWeight: 500,
+  color: '#FFFFFF', background: 'var(--ink-1)',
+  border: '1px solid var(--ink-1)',
+  borderRadius: 'var(--radius)', cursor: 'pointer',
+  fontFamily: 'inherit',
+}
+
+const BTN_SECONDARY: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  padding: '0 10px', height: 26,
+  fontSize: 12, fontWeight: 500,
+  color: 'var(--ink-2)', background: 'var(--surface)',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--radius)', cursor: 'pointer',
+  fontFamily: 'inherit',
+}
+
+const BTN_OK: React.CSSProperties = {
+  padding: '2px 8px', height: 24,
+  fontSize: 11, fontWeight: 500,
+  color: '#FFFFFF', background: 'var(--ok)',
+  border: '1px solid var(--ok)',
+  borderRadius: 'var(--radius)', cursor: 'pointer',
+  fontFamily: 'inherit',
+}
+
+// ── utilities ─────────────────────────────────────────────
 
 async function getToken(): Promise<string | null> {
   const supabase = createClient()
@@ -33,12 +76,46 @@ async function apiFetch(path: string, method: string, body?: object) {
   return data
 }
 
-// -------------------- Modals --------------------
+// ── icon helpers ──────────────────────────────────────────
 
-function ModalNuevoCliente({ onSave, onClose, zIndex = 'z-50' }: {
+function IconPlus() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 4v16m8-8H4" />
+    </svg>
+  )
+}
+
+function IconEdit() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  )
+}
+
+function IconTrash() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  )
+}
+
+function IconX() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+// ── Modals ────────────────────────────────────────────────
+
+function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
   onSave: (c: Cliente) => void
   onClose: () => void
-  zIndex?: string
+  zIndex?: number
 }) {
   const [form, setForm] = useState({ nombre: '', email: '', telefono: '' })
   const [loading, setLoading] = useState(false)
@@ -63,40 +140,35 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 'z-50' }: {
   }
 
   return (
-    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-black/40 backdrop-blur-sm p-4`}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Nuevo cliente</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(15,17,21,.22)', backdropFilter: 'blur(2px)', padding: 16,
+    }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line)', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--line)' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Nuevo cliente</span>
+          <button onClick={onClose} style={{ ...BTN_SECONDARY, padding: '0', width: 26, height: 26, border: 'none', background: 'transparent', color: 'var(--ink-3)' }}>
+            <IconX />
           </button>
         </div>
-        <form onSubmit={handleSave} className="px-5 py-4 space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+        <form onSubmit={handleSave} style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FieldRow label="Nombre *">
             <input type="text" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-              className={inputCls} placeholder="Nombre del cliente" autoFocus required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              style={INPUT} placeholder="Nombre del cliente" autoFocus required />
+          </FieldRow>
+          <FieldRow label="Email">
             <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              className={inputCls} placeholder="email@ejemplo.com" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+              style={INPUT} placeholder="email@ejemplo.com" />
+          </FieldRow>
+          <FieldRow label="Teléfono">
             <input type="text" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-              className={inputCls} placeholder="+54 9 ..." />
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose}
-              className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={loading || !form.nombre.trim()}
-              className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400">
+              style={INPUT} placeholder="+54 9 ..." />
+          </FieldRow>
+          {error && <p style={{ fontSize: 12, color: 'var(--bad)', margin: 0 }}>{error}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+            <button type="button" onClick={onClose} style={BTN_SECONDARY}>Cancelar</button>
+            <button type="submit" disabled={loading || !form.nombre.trim()} style={{ ...BTN_PRIMARY, opacity: loading || !form.nombre.trim() ? 0.5 : 1 }}>
               {loading ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
@@ -106,10 +178,10 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 'z-50' }: {
   )
 }
 
-function ModalNuevoTransporte({ onSave, onClose, zIndex = 'z-50' }: {
+function ModalNuevoTransporte({ onSave, onClose, zIndex = 50 }: {
   onSave: (t: Transporte) => void
   onClose: () => void
-  zIndex?: string
+  zIndex?: number
 }) {
   const [form, setForm] = useState({ nombre: '', telefono: '' })
   const [loading, setLoading] = useState(false)
@@ -133,35 +205,31 @@ function ModalNuevoTransporte({ onSave, onClose, zIndex = 'z-50' }: {
   }
 
   return (
-    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-black/40 backdrop-blur-sm p-4`}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Nuevo transporte</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(15,17,21,.22)', backdropFilter: 'blur(2px)', padding: 16,
+    }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line)', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--line)' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Nuevo transporte</span>
+          <button onClick={onClose} style={{ ...BTN_SECONDARY, padding: '0', width: 26, height: 26, border: 'none', background: 'transparent', color: 'var(--ink-3)' }}>
+            <IconX />
           </button>
         </div>
-        <form onSubmit={handleSave} className="px-5 py-4 space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+        <form onSubmit={handleSave} style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FieldRow label="Nombre *">
             <input type="text" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-              className={inputCls} placeholder="Nombre del transporte" autoFocus required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+              style={INPUT} placeholder="Nombre del transporte" autoFocus required />
+          </FieldRow>
+          <FieldRow label="Teléfono">
             <input type="text" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-              className={inputCls} placeholder="+54 9 ..." />
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose}
-              className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={loading || !form.nombre.trim()}
-              className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400">
+              style={INPUT} placeholder="+54 9 ..." />
+          </FieldRow>
+          {error && <p style={{ fontSize: 12, color: 'var(--bad)', margin: 0 }}>{error}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+            <button type="button" onClick={onClose} style={BTN_SECONDARY}>Cancelar</button>
+            <button type="submit" disabled={loading || !form.nombre.trim()} style={{ ...BTN_PRIMARY, opacity: loading || !form.nombre.trim() ? 0.5 : 1 }}>
               {loading ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
@@ -171,7 +239,16 @@ function ModalNuevoTransporte({ onSave, onClose, zIndex = 'z-50' }: {
   )
 }
 
-// -------------------- TablaClientes --------------------
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
+// ── TablaClientes ─────────────────────────────────────────
 
 function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; isSuperadmin: boolean }) {
   const [clientes, setClientes] = useState(init)
@@ -198,7 +275,7 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
       setClientes(prev => prev.map(c => c.id === editId ? { ...c, ...updates } : c))
       setEditId(null)
     } catch {
-      // silently fail — keep edit mode open
+      // keep edit open
     }
     setLoadingId(null)
   }
@@ -209,9 +286,7 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
     try {
       await apiFetch('/api/maestros/clientes', 'PUT', { id: c.id, activo: !c.activo })
       setClientes(prev => prev.map(x => x.id === c.id ? { ...x, activo: !x.activo } : x))
-    } catch {
-      // silently fail
-    }
+    } catch { /**/ }
     setLoadingId(null)
   }
 
@@ -223,53 +298,53 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
       await apiFetch('/api/maestros/clientes', 'DELETE', { id })
       setClientes(prev => prev.filter(c => c.id !== id))
       if (editId === id) setEditId(null)
-    } catch {
-      // silently fail
-    }
+    } catch { /**/ }
     setLoadingId(null)
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)' }}>
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Clientes</h2>
-          <p className="text-xs text-gray-500 mt-0.5">{clientes.length} registros</p>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Clientes</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 1 }}>{clientes.length} registros</div>
         </div>
         {isSuperadmin && (
-          <button onClick={() => setShowNuevo(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nuevo cliente
+          <button onClick={() => setShowNuevo(true)} style={BTN_PRIMARY}>
+            <IconPlus /> Nuevo cliente
           </button>
         )}
       </div>
 
       {clientes.length === 0 ? (
-        <div className="px-5 py-12 text-center">
-          <p className="text-sm text-gray-400">No hay clientes cargados</p>
+        <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, color: 'var(--ink-4)', margin: '0 0 8px' }}>No hay clientes cargados</p>
           {isSuperadmin && (
-            <button onClick={() => setShowNuevo(true)}
-              className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <button onClick={() => setShowNuevo(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)', fontFamily: 'inherit' }}>
               + Agregar el primero
             </button>
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Teléfono</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Activo</th>
-                {isSuperadmin && <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Acciones</th>}
+              <tr style={{ background: 'var(--surface)' }}>
+                {['Nombre', 'Email', 'Teléfono', 'Activo', ...(isSuperadmin ? ['Acciones'] : [])].map(h => (
+                  <th key={h} style={{
+                    padding: '8px 16px', textAlign: 'left',
+                    fontSize: 10, fontWeight: 500,
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: 'var(--ink-3)',
+                    borderBottom: '1px solid var(--line)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {clientes.map(c => {
                 const isEditing = editId === c.id
                 const isLoading = loadingId === c.id
@@ -277,75 +352,76 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
                   <tr
                     key={c.id}
                     onClick={() => isSuperadmin && !isEditing && startEdit(c)}
-                    className={`${isSuperadmin && !isEditing ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors ${isEditing ? 'bg-blue-50/60' : ''}`}
+                    style={{
+                      borderTop: '1px solid var(--line)',
+                      cursor: isSuperadmin && !isEditing ? 'pointer' : 'default',
+                      background: isEditing ? 'var(--accent-soft)' : 'var(--surface)',
+                      transition: 'background 80ms',
+                    }}
+                    onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = 'var(--row-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isEditing ? 'var(--accent-soft)' : 'var(--surface)' }}
                   >
-                    <td className="px-5 py-3">
+                    <td style={{ padding: '8px 16px', minWidth: 160 }}>
                       {isEditing ? (
                         <input type="text" value={editForm.nombre}
                           onChange={e => setEditForm(p => ({ ...p, nombre: e.target.value }))}
-                          onClick={e => e.stopPropagation()} className={inputCls} autoFocus />
+                          onClick={e => e.stopPropagation()} style={INPUT} autoFocus />
                       ) : (
-                        <span className="font-medium text-gray-900">{c.nombre}</span>
+                        <span style={{ fontWeight: 500, color: 'var(--ink-1)' }}>{c.nombre}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3">
+                    <td style={{ padding: '8px 16px' }}>
                       {isEditing ? (
                         <input type="email" value={editForm.email}
                           onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                          onClick={e => e.stopPropagation()} className={inputCls} placeholder="—" />
+                          onClick={e => e.stopPropagation()} style={INPUT} placeholder="—" />
                       ) : (
-                        <span className="text-gray-600">{c.email ?? '—'}</span>
+                        <span style={{ color: 'var(--ink-2)' }}>{c.email ?? '—'}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3">
+                    <td style={{ padding: '8px 16px' }}>
                       {isEditing ? (
                         <input type="text" value={editForm.telefono}
                           onChange={e => setEditForm(p => ({ ...p, telefono: e.target.value }))}
-                          onClick={e => e.stopPropagation()} className={inputCls} placeholder="—" />
+                          onClick={e => e.stopPropagation()} style={INPUT} placeholder="—" />
                       ) : (
-                        <span className="text-gray-600">{c.telefono ?? '—'}</span>
+                        <span style={{ color: 'var(--ink-2)' }}>{c.telefono ?? '—'}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
                       <button
                         onClick={e => toggleActivo(c, e)}
                         disabled={isLoading}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
-                          c.activo ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
+                        style={{
+                          padding: '2px 10px', borderRadius: 100, fontSize: 11, fontWeight: 500,
+                          border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                          opacity: isLoading ? 0.5 : 1,
+                          background: c.activo ? 'var(--ok-bg)' : 'var(--neutral-bg)',
+                          color: c.activo ? 'var(--ok)' : 'var(--ink-3)',
+                          transition: 'background 100ms',
+                        }}
                       >
                         {c.activo ? 'Activo' : 'Inactivo'}
                       </button>
                     </td>
                     {isSuperadmin && (
-                      <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                      <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
-                          <div className="flex items-center gap-2">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button onClick={saveEdit} disabled={isLoading || !editForm.nombre.trim()}
-                              className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-300">
+                              style={{ ...BTN_OK, opacity: isLoading || !editForm.nombre.trim() ? 0.5 : 1 }}>
                               {isLoading ? '...' : 'Guardar'}
                             </button>
-                            <button onClick={() => setEditId(null)}
-                              className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                              Cancelar
-                            </button>
+                            <button onClick={() => setEditId(null)} style={BTN_SECONDARY}>Cancelar</button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1">
-                            <button onClick={e => { e.stopPropagation(); startEdit(c) }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                              title="Editar">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button onClick={e => deleteCliente(c.id, e)} disabled={isLoading}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
-                              title="Eliminar">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconBtn onClick={e => { e.stopPropagation(); startEdit(c) }} title="Editar">
+                              <IconEdit />
+                            </IconBtn>
+                            <IconBtn onClick={e => deleteCliente(c.id, e)} title="Eliminar" danger disabled={isLoading}>
+                              <IconTrash />
+                            </IconBtn>
                           </div>
                         )}
                       </td>
@@ -368,7 +444,7 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
   )
 }
 
-// -------------------- TablaTransportes --------------------
+// ── TablaTransportes ──────────────────────────────────────
 
 function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Transporte[]; isSuperadmin: boolean }) {
   const [transportes, setTransportes] = useState(init)
@@ -394,7 +470,7 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
       setTransportes(prev => prev.map(t => t.id === editId ? { ...t, ...updates } : t))
       setEditId(null)
     } catch {
-      // silently fail — keep edit mode open
+      // keep edit open
     }
     setLoadingId(null)
   }
@@ -405,9 +481,7 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
     try {
       await apiFetch('/api/maestros/transportes', 'PUT', { id: t.id, activo: !t.activo })
       setTransportes(prev => prev.map(x => x.id === t.id ? { ...x, activo: !x.activo } : x))
-    } catch {
-      // silently fail
-    }
+    } catch { /**/ }
     setLoadingId(null)
   }
 
@@ -419,52 +493,53 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
       await apiFetch('/api/maestros/transportes', 'DELETE', { id })
       setTransportes(prev => prev.filter(t => t.id !== id))
       if (editId === id) setEditId(null)
-    } catch {
-      // silently fail
-    }
+    } catch { /**/ }
     setLoadingId(null)
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)' }}>
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Transportes</h2>
-          <p className="text-xs text-gray-500 mt-0.5">{transportes.length} registros</p>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Transportes</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 1 }}>{transportes.length} registros</div>
         </div>
         {isSuperadmin && (
-          <button onClick={() => setShowNuevo(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nuevo transporte
+          <button onClick={() => setShowNuevo(true)} style={BTN_PRIMARY}>
+            <IconPlus /> Nuevo transporte
           </button>
         )}
       </div>
 
       {transportes.length === 0 ? (
-        <div className="px-5 py-12 text-center">
-          <p className="text-sm text-gray-400">No hay transportes cargados</p>
+        <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, color: 'var(--ink-4)', margin: '0 0 8px' }}>No hay transportes cargados</p>
           {isSuperadmin && (
-            <button onClick={() => setShowNuevo(true)}
-              className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <button onClick={() => setShowNuevo(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)', fontFamily: 'inherit' }}>
               + Agregar el primero
             </button>
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Teléfono</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Activo</th>
-                {isSuperadmin && <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Acciones</th>}
+              <tr style={{ background: 'var(--surface)' }}>
+                {['Nombre', 'Teléfono', 'Activo', ...(isSuperadmin ? ['Acciones'] : [])].map(h => (
+                  <th key={h} style={{
+                    padding: '8px 16px', textAlign: 'left',
+                    fontSize: 10, fontWeight: 500,
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: 'var(--ink-3)',
+                    borderBottom: '1px solid var(--line)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {transportes.map(t => {
                 const isEditing = editId === t.id
                 const isLoading = loadingId === t.id
@@ -472,66 +547,67 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
                   <tr
                     key={t.id}
                     onClick={() => isSuperadmin && !isEditing && startEdit(t)}
-                    className={`${isSuperadmin && !isEditing ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors ${isEditing ? 'bg-blue-50/60' : ''}`}
+                    style={{
+                      borderTop: '1px solid var(--line)',
+                      cursor: isSuperadmin && !isEditing ? 'pointer' : 'default',
+                      background: isEditing ? 'var(--accent-soft)' : 'var(--surface)',
+                      transition: 'background 80ms',
+                    }}
+                    onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = 'var(--row-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isEditing ? 'var(--accent-soft)' : 'var(--surface)' }}
                   >
-                    <td className="px-5 py-3">
+                    <td style={{ padding: '8px 16px', minWidth: 160 }}>
                       {isEditing ? (
                         <input type="text" value={editForm.nombre}
                           onChange={e => setEditForm(p => ({ ...p, nombre: e.target.value }))}
-                          onClick={e => e.stopPropagation()} className={inputCls} autoFocus />
+                          onClick={e => e.stopPropagation()} style={INPUT} autoFocus />
                       ) : (
-                        <span className="font-medium text-gray-900">{t.nombre}</span>
+                        <span style={{ fontWeight: 500, color: 'var(--ink-1)' }}>{t.nombre}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3">
+                    <td style={{ padding: '8px 16px' }}>
                       {isEditing ? (
                         <input type="text" value={editForm.telefono}
                           onChange={e => setEditForm(p => ({ ...p, telefono: e.target.value }))}
-                          onClick={e => e.stopPropagation()} className={inputCls} placeholder="—" />
+                          onClick={e => e.stopPropagation()} style={INPUT} placeholder="—" />
                       ) : (
-                        <span className="text-gray-600">{t.telefono ?? '—'}</span>
+                        <span style={{ color: 'var(--ink-2)' }}>{t.telefono ?? '—'}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
                       <button
                         onClick={e => toggleActivo(t, e)}
                         disabled={isLoading}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
-                          t.activo ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
+                        style={{
+                          padding: '2px 10px', borderRadius: 100, fontSize: 11, fontWeight: 500,
+                          border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                          opacity: isLoading ? 0.5 : 1,
+                          background: t.activo ? 'var(--ok-bg)' : 'var(--neutral-bg)',
+                          color: t.activo ? 'var(--ok)' : 'var(--ink-3)',
+                          transition: 'background 100ms',
+                        }}
                       >
                         {t.activo ? 'Activo' : 'Inactivo'}
                       </button>
                     </td>
                     {isSuperadmin && (
-                      <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                      <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
-                          <div className="flex items-center gap-2">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button onClick={saveEdit} disabled={isLoading || !editForm.nombre.trim()}
-                              className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-300">
+                              style={{ ...BTN_OK, opacity: isLoading || !editForm.nombre.trim() ? 0.5 : 1 }}>
                               {isLoading ? '...' : 'Guardar'}
                             </button>
-                            <button onClick={() => setEditId(null)}
-                              className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                              Cancelar
-                            </button>
+                            <button onClick={() => setEditId(null)} style={BTN_SECONDARY}>Cancelar</button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1">
-                            <button onClick={e => { e.stopPropagation(); startEdit(t) }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                              title="Editar">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button onClick={e => deleteTransporte(t.id, e)} disabled={isLoading}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
-                              title="Eliminar">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconBtn onClick={e => { e.stopPropagation(); startEdit(t) }} title="Editar">
+                              <IconEdit />
+                            </IconBtn>
+                            <IconBtn onClick={e => deleteTransporte(t.id, e)} title="Eliminar" danger disabled={isLoading}>
+                              <IconTrash />
+                            </IconBtn>
                           </div>
                         )}
                       </td>
@@ -554,36 +630,73 @@ function TablaTransportes({ transportes: init, isSuperadmin }: { transportes: Tr
   )
 }
 
-// -------------------- Main export --------------------
+// ── icon button helper ────────────────────────────────────
+
+function IconBtn({ children, onClick, title, danger, disabled }: {
+  children: React.ReactNode
+  onClick: (e: React.MouseEvent) => void
+  title?: string
+  danger?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      style={{
+        width: 26, height: 26, border: 'none', background: 'transparent',
+        borderRadius: 'var(--radius)', color: 'var(--ink-3)',
+        display: 'grid', placeItems: 'center', cursor: 'pointer',
+        opacity: disabled ? 0.4 : 1,
+        transition: 'background 80ms, color 80ms',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = danger ? 'var(--bad-bg)' : 'var(--surface-2)'
+        e.currentTarget.style.color = danger ? 'var(--bad)' : 'var(--ink-1)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color = 'var(--ink-3)'
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── Main export ───────────────────────────────────────────
 
 export default function DashboardMaestros({ clientes, transportes, userRol }: Props) {
   const [tab, setTab] = useState<'clientes' | 'transportes'>('clientes')
   const isSuperadmin = userRol === 'superadmin'
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Maestros</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestión de clientes y transportes</p>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', margin: '0 0 2px', letterSpacing: '-0.01em' }}>Maestros</h1>
+          <p style={{ fontSize: 13, color: 'var(--ink-3)', margin: 0 }}>Gestión de clientes y transportes</p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setTab('clientes')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === 'clientes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Clientes
-          </button>
-          <button
-            onClick={() => setTab('transportes')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === 'transportes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Transportes
-          </button>
+
+        {/* Segmented tab switcher */}
+        <div style={{ display: 'inline-flex', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: 2, gap: 2 }}>
+          {(['clientes', 'transportes'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: '4px 14px', fontSize: 12, fontWeight: 500,
+                borderRadius: 4, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: tab === t ? 'var(--surface)' : 'transparent',
+                color: tab === t ? 'var(--ink-1)' : 'var(--ink-3)',
+                boxShadow: tab === t ? 'var(--shadow-sm)' : 'none',
+                transition: 'background 100ms, color 100ms',
+              }}
+            >
+              {t === 'clientes' ? 'Clientes' : 'Transportes'}
+            </button>
+          ))}
         </div>
       </div>
 
