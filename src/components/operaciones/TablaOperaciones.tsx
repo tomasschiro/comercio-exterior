@@ -207,6 +207,23 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     setEditing({ id: op.id, field, value: getRawValue(op, field) })
   }
 
+  async function liberarOperacion(id: number, liberacion: string | null): Promise<string | null> {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return 'No hay sesión activa'
+    const res = await fetch('/api/operaciones/liberar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id, liberacion }),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      return (json.error as string) || `Error ${res.status}`
+    }
+    return null
+  }
+
   async function updateOperacion(id: number, updates: Record<string, unknown>): Promise<string | null> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
@@ -237,7 +254,9 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: parsed } : null)
     setEditing(null)
     setCellStatus(id, field, 'saving')
-    const error = await updateOperacion(id, { [field]: parsed })
+    const error = field === 'liberacion'
+      ? await liberarOperacion(id, parsed as string | null)
+      : await updateOperacion(id, { [field]: parsed })
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: oldValue } : op))
       if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: oldValue } : null)

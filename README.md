@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Email — Resend setup
+
+When a liberation date is saved on an operation, the app automatically emails the client if they have an email address in the database.
+
+To enable this:
+
+1. Create a free account at [resend.com](https://resend.com)
+2. Verify your sending domain (`rmscomex.com`) in the Resend dashboard → Domains
+3. Create an API key in Resend → API Keys
+4. Add it to Vercel: **Project → Settings → Environment Variables**
+   - Name: `RESEND_API_KEY`
+   - Value: `re_xxxxxxxxxxxxxxxxxxxx` (your key from Resend)
+5. Redeploy the project for the variable to take effect
+
+> Without a valid `RESEND_API_KEY`, the liberation date is still saved normally — the email step is silently skipped.
