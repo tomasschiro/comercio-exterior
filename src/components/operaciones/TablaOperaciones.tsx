@@ -62,6 +62,13 @@ function getRawValue(op: Operacion, field: keyof Operacion): string {
   return v !== null && v !== undefined ? String(v) : ''
 }
 
+function applyFieldTransform(field: keyof Operacion, value: string): string {
+  if (field === 'despacho') return value.toUpperCase().slice(0, 11)
+  if (field === 'senasa') return value.replace(/\D/g, '').slice(0, 7)
+  if (field === 'crt') return value.replace(/\D/g, '').slice(0, 9)
+  return value
+}
+
 function getDisplayValue(op: Operacion, field: keyof Operacion): string {
   const type = FIELD_TYPE[field]
   if (type === 'date') return formatDate(op[field] as string | null)
@@ -448,7 +455,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     if (isEditingCell) {
       return (
         <input autoFocus type={inputType} value={editing.value}
-          onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+          maxLength={field === 'despacho' ? 11 : field === 'senasa' ? 7 : field === 'crt' ? 9 : undefined}
+          onChange={e => setEditing(prev => prev ? { ...prev, value: applyFieldTransform(field, e.target.value) } : null)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
             else if (e.key === 'Escape') { e.preventDefault(); suppressBlurRef.current = true; setEditing(null) }
@@ -457,7 +465,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
             if (suppressBlurRef.current) { suppressBlurRef.current = false; return }
             setEditing(prev => { if (prev && prev.id === op.id && prev.field === field) { commitEdit(prev); return null } return prev })
           }}
-          style={{ ...CELL_INPUT, ...(extraStyle ?? {}), minWidth: inputType === 'date' ? 110 : 60 }}
+          style={{ ...CELL_INPUT, ...(extraStyle ?? {}), minWidth: inputType === 'date' ? 110 : 60, ...(field === 'despacho' ? { textTransform: 'uppercase' as const } : {}) }}
         />
       )
     }
@@ -491,7 +499,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     if (isEditingCell) {
       return (
         <input autoFocus type={inputType} value={editing.value}
-          onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+          maxLength={field === 'despacho' ? 11 : field === 'senasa' ? 7 : field === 'crt' ? 9 : undefined}
+          onChange={e => setEditing(prev => prev ? { ...prev, value: applyFieldTransform(field, e.target.value) } : null)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
             else if (e.key === 'Escape') { e.preventDefault(); suppressBlurRef.current = true; setEditing(null) }
@@ -500,7 +509,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
             if (suppressBlurRef.current) { suppressBlurRef.current = false; return }
             setEditing(prev => { if (prev && prev.id === op.id && prev.field === field) { commitEdit(prev); return null } return prev })
           }}
-          style={{ ...CELL_INPUT, minWidth: 80 }}
+          style={{ ...CELL_INPUT, minWidth: 80, ...(field === 'despacho' ? { textTransform: 'uppercase' as const } : {}) }}
         />
       )
     }

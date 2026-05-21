@@ -226,10 +226,17 @@ export default function PanelDetalle({ op, onClose, onSave }: Props) {
           autoFocus
           type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
           value={(rawVal as string) ?? ''}
-          onChange={e => setField(field.key, e.target.value || null)}
+          maxLength={field.key === 'despacho' ? 11 : field.key === 'senasa' ? 7 : field.key === 'crt' ? 9 : undefined}
+          onChange={e => {
+            let v = e.target.value
+            if (field.key === 'despacho') v = v.toUpperCase().slice(0, 11)
+            else if (field.key === 'senasa') v = v.replace(/\D/g, '').slice(0, 7)
+            else if (field.key === 'crt') v = v.replace(/\D/g, '').slice(0, 9)
+            setField(field.key, v || null)
+          }}
           onBlur={() => setEditingField(null)}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditingField(null) } }}
-          style={{ fontSize: 13, border: '1px solid #1E40AF', borderRadius: 4, padding: '2px 6px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', minWidth: field.type === 'date' ? 120 : 80 }}
+          style={{ fontSize: 13, border: '1px solid #1E40AF', borderRadius: 4, padding: '2px 6px', outline: 'none', background: '#FFFFFF', color: '#1F1B14', boxShadow: '0 0 0 3px rgba(29,78,216,.12)', minWidth: field.type === 'date' ? 120 : 80, ...(field.key === 'despacho' ? { textTransform: 'uppercase' as const } : {}) }}
         />
       )
     }

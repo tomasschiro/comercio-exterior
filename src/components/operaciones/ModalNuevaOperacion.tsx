@@ -156,9 +156,13 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
   function set(field: keyof NuevaOperacion, value: string) {
     if (field === 'interno') setErrors(p => ({ ...p, interno: undefined }))
     if (field === 'cliente') setErrors(p => ({ ...p, cliente: undefined }))
+    let v = value
+    if (field === 'despacho') v = value.toUpperCase().slice(0, 11)
+    else if (field === 'senasa') v = value.replace(/\D/g, '').slice(0, 7)
+    else if (field === 'crt') v = value.replace(/\D/g, '').slice(0, 9)
     setForm(prev => ({
       ...prev,
-      [field]: value === '' ? null : (field === 'interno' ? parseInt(value) || null : value),
+      [field]: v === '' ? null : (field === 'interno' ? parseInt(v) || null : v),
     }))
   }
 
@@ -358,6 +362,7 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
               <div>
                 <label style={labelStyle}>CRT</label>
                 <input type="text" value={form.crt ?? ''} onChange={e => set('crt', e.target.value)}
+                  maxLength={9}
                   style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} placeholder="Nº CRT" />
               </div>
 
@@ -413,12 +418,14 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
                     <div>
                       <label style={labelStyle}>SENASA</label>
                       <input type="text" value={form.senasa ?? ''} onChange={e => set('senasa', e.target.value)}
+                        maxLength={7}
                         style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} placeholder="Nº SENASA" />
                     </div>
                     <div>
                       <label style={labelStyle}>N. Despacho</label>
                       <input type="text" value={form.despacho ?? ''} onChange={e => set('despacho', e.target.value)}
-                        style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} placeholder="Nº despacho" />
+                        maxLength={11}
+                        style={{ ...inputStyle, textTransform: 'uppercase' }} onFocus={handleFocus} onBlur={handleBlur} placeholder="Nº despacho" />
                     </div>
                     <div>
                       <label style={labelStyle}>Oficialización</label>
