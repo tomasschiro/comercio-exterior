@@ -69,6 +69,28 @@ function applyFieldTransform(field: keyof Operacion, value: string): string {
   return value
 }
 
+const EDITABLE_FIELDS: (keyof Operacion)[] = [
+  'recep_doc', 'cliente', 'oc', 'factura', 'crt',
+  'fecha_pedido_fondos', 'senasa', 'oficializacion',
+  'despacho', 'aviso', 'nota_entrega', 'liberacion',
+]
+
+function parseShortDate(input: string): string | null {
+  const s = input.trim()
+  if (!s) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})$/)
+  if (m) {
+    const year = new Date().getFullYear()
+    return `${year}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  }
+  if (/^\d{4}$/.test(s)) {
+    const year = new Date().getFullYear()
+    return `${year}-${s.slice(2, 4)}-${s.slice(0, 2)}`
+  }
+  return null
+}
+
 function getDisplayValue(op: Operacion, field: keyof Operacion): string {
   const type = FIELD_TYPE[field]
   if (type === 'date') return formatDate(op[field] as string | null)
@@ -240,7 +262,10 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   function startEdit(op: Operacion, field: keyof Operacion) {
     const key = `${op.id}-${field}`
     if (cellStates[key] === 'saving') return
-    setEditing({ id: op.id, field, value: getRawValue(op, field) })
+    const value = FIELD_TYPE[field] === 'date'
+      ? formatDateShort(op[field] as string | null)
+      : getRawValue(op, field)
+    setEditing({ id: op.id, field, value })
   }
 
   async function liberarOperacion(id: number, liberacion: string | null): Promise<string | null> {
@@ -285,6 +310,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     let parsed: string | number | null
     if (value.trim() === '') { parsed = null }
     else if (field === 'interno') { parsed = parseInt(value) || null }
+    else if (FIELD_TYPE[field] === 'date') { parsed = parseShortDate(value) }
     else { parsed = value.trim() }
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: parsed } : op))
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: parsed } : null)
@@ -307,7 +333,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   function openSenasaPopover(op: Operacion, e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
     const left = Math.min(rect.left, window.innerWidth - 196)
-    setSenasaPopover({ id: op.id, estado: ((op.senasa_estado as SenasaEstado) || 'pendiente'), vinculacion: op.senasa_vinculacion || '', top: rect.bottom + 4, left })
+    setSenasaPopover({ id: op.id, estado: ((op.senasa_estado as SenasaEstado) || 'pendiente'), vinculacion: formatDateShort(op.senasa_vinculacion), top: rect.bottom + 4, left })
   }
 
   async function saveSenasaEstado() {
@@ -315,7 +341,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     const { id, estado, vinculacion } = senasaPopover
     const oldOp = operaciones.find(o => o.id === id)
     if (!oldOp) return
-    const updates = { senasa_estado: estado, senasa_vinculacion: estado === 'vinculada' && vinculacion ? vinculacion : null }
+    const parsedVinculacion = parseShortDate(vinculacion)
+    const updates = { senasa_estado: estado, senasa_vinculacion: estado === 'vinculada' && parsedVinculacion ? parsedVinculacion : null }
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, ...updates } : op))
     setSenasaPopover(null)
     const error = await updateOperacion(id, updates)
@@ -451,21 +478,36 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     const key = `${op.id}-${field}`
     const status = cellStates[key]
     const isEditingCell = editing?.id === op.id && editing?.field === field
-    const inputType = FIELD_TYPE[field] ?? 'text'
+    const inputType = FIELD_TYPE[field] === 'date' ? 'text' : (FIELD_TYPE[field] ?? 'text')
     if (isEditingCell) {
       return (
         <input autoFocus type={inputType} value={editing.value}
+          placeholder={FIELD_TYPE[field] === 'date' ? 'DD/MM' : undefined}
           maxLength={field === 'despacho' ? 11 : field === 'senasa' ? 7 : field === 'crt' ? 9 : undefined}
           onChange={e => setEditing(prev => prev ? { ...prev, value: applyFieldTransform(field, e.target.value) } : null)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
             else if (e.key === 'Escape') { e.preventDefault(); suppressBlurRef.current = true; setEditing(null) }
+            else if (e.key === 'Tab') {
+              e.preventDefault()
+              suppressBlurRef.current = true
+              commitEdit(editing)
+              const fieldIdx = EDITABLE_FIELDS.indexOf(field)
+              const rowIdx = paginated.findIndex(o => o.id === op.id)
+              if (e.shiftKey) {
+                if (fieldIdx > 0) startEdit(op, EDITABLE_FIELDS[fieldIdx - 1])
+                else if (rowIdx > 0) startEdit(paginated[rowIdx - 1], EDITABLE_FIELDS[EDITABLE_FIELDS.length - 1])
+              } else {
+                if (fieldIdx < EDITABLE_FIELDS.length - 1) startEdit(op, EDITABLE_FIELDS[fieldIdx + 1])
+                else if (rowIdx < paginated.length - 1) startEdit(paginated[rowIdx + 1], EDITABLE_FIELDS[0])
+              }
+            }
           }}
           onBlur={() => {
             if (suppressBlurRef.current) { suppressBlurRef.current = false; return }
             setEditing(prev => { if (prev && prev.id === op.id && prev.field === field) { commitEdit(prev); return null } return prev })
           }}
-          style={{ ...CELL_INPUT, ...(extraStyle ?? {}), minWidth: inputType === 'date' ? 110 : 60, ...(field === 'despacho' ? { textTransform: 'uppercase' as const } : {}) }}
+          style={{ ...CELL_INPUT, ...(extraStyle ?? {}), minWidth: 60, ...(field === 'despacho' ? { textTransform: 'uppercase' as const } : {}) }}
         />
       )
     }
@@ -504,6 +546,20 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); suppressBlurRef.current = true; commitEdit(editing) }
             else if (e.key === 'Escape') { e.preventDefault(); suppressBlurRef.current = true; setEditing(null) }
+            else if (e.key === 'Tab') {
+              e.preventDefault()
+              suppressBlurRef.current = true
+              commitEdit(editing)
+              const fieldIdx = EDITABLE_FIELDS.indexOf(field)
+              const rowIdx = paginated.findIndex(o => o.id === op.id)
+              if (e.shiftKey) {
+                if (fieldIdx > 0) startEdit(op, EDITABLE_FIELDS[fieldIdx - 1])
+                else if (rowIdx > 0) startEdit(paginated[rowIdx - 1], EDITABLE_FIELDS[EDITABLE_FIELDS.length - 1])
+              } else {
+                if (fieldIdx < EDITABLE_FIELDS.length - 1) startEdit(op, EDITABLE_FIELDS[fieldIdx + 1])
+                else if (rowIdx < paginated.length - 1) startEdit(paginated[rowIdx + 1], EDITABLE_FIELDS[0])
+              }
+            }
           }}
           onBlur={() => {
             if (suppressBlurRef.current) { suppressBlurRef.current = false; return }
@@ -1175,14 +1231,14 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                                 style={{ width: 13, height: 13, accentColor: '#3730A3', cursor: 'pointer', flexShrink: 0 }}
                               />
                             )}
-                            <button onClick={() => setPanelOp(op)} title="Ver detalle" className="act-btn"
+                            <button tabIndex={-1} onClick={() => setPanelOp(op)} title="Ver detalle" className="act-btn"
                               style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#7A7158', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: selectedIds.size > 0 ? 1 : 0, transition: 'opacity 100ms, background 100ms' }}>
                               <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                               </svg>
                             </button>
                             {userRol === 'superadmin' && (
-                              <button onClick={() => setDeleteConfirm({ id: op.id, interno: op.interno })} title="Eliminar operación" className="act-btn"
+                              <button tabIndex={-1} onClick={() => setDeleteConfirm({ id: op.id, interno: op.interno })} title="Eliminar operación" className="act-btn"
                                 style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#991B1B', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}>
                                 <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1252,7 +1308,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
             </div>
             {senasaPopover.estado === 'vinculada' && (
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8DFC5' }}>
-                <input type="date" value={senasaPopover.vinculacion}
+                <input type="text" placeholder="DD/MM" value={senasaPopover.vinculacion}
                   onChange={e => setSenasaPopover(prev => prev ? { ...prev, vinculacion: e.target.value } : null)}
                   style={{ width: '100%', padding: '6px 8px', fontSize: 12, border: '1px solid #E8DFC5', borderRadius: 4, outline: 'none', color: '#1F1B14' }}
                   onFocus={e => { e.currentTarget.style.borderColor = '#1E40AF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,.12)' }}
