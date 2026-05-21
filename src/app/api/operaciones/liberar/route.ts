@@ -9,18 +9,13 @@ function formatDateLong(d: string | null): string {
 }
 
 function buildEmailHtml(op: {
+  interno: number | null
   liberacion: string | null
   factura: string | null
   crt: string | null
-  despacho: string | null
 }): string {
-  const row = (label: string, value: string) => `
-    <tr>
-      <td style="padding:12px 16px;border-bottom:1px solid #E5E7EB;">
-        <span style="font-size:12px;color:#6B7280;display:block;margin-bottom:2px;">${label}</span>
-        <span style="font-size:14px;font-weight:600;color:#111827;">${value}</span>
-      </td>
-    </tr>`
+  const bullet = (label: string, value: string) =>
+    `<p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.6;">&#8226; <strong>${label}:</strong> ${value}</p>`
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -39,26 +34,19 @@ function buildEmailHtml(op: {
         </tr>
         <tr>
           <td style="padding:32px;">
-            <p style="margin:0 0 20px;font-size:15px;color:#374151;">Estimados,</p>
-            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Informamos que la mercadería del siguiente despacho ha sido liberada:
+            <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+              Informamos que la carga de importación de referencia ha sido verificada y liberada, dando por concluida nuestra gestión aduanera.
             </p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border-radius:6px;border:1px solid #E5E7EB;margin-bottom:24px;">
-              ${row('Fecha de liberación', formatDateLong(op.liberacion))}
-              ${row('Factura', op.factura ?? '—')}
-              ${row('CRT', op.crt ?? '—')}
-              <tr>
-                <td style="padding:12px 16px;">
-                  <span style="font-size:12px;color:#6B7280;display:block;margin-bottom:2px;">N° de Despacho</span>
-                  <span style="font-size:14px;font-weight:600;color:#111827;">${op.despacho ?? '—'}</span>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:0 0 12px;font-size:14px;color:#374151;line-height:1.6;">
-              La gestión aduanera por parte de RMS ha concluido.
+            <div style="margin-bottom:24px;">
+              ${bullet('Fecha de liberación', formatDateLong(op.liberacion))}
+              ${bullet('Factura', op.factura ?? '—')}
+              ${bullet('CRT', op.crt ?? '—')}
+            </div>
+            <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+              Para coordinar fecha y horario de arribo, favor contactar con el transporte.
             </p>
             <p style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.6;">
-              Ante cualquier consulta, comunicarse a
+              Ante cualquier consulta comunicarse a
               <a href="mailto:rmsimpo@rodolfoschiro.com.ar" style="color:#1D4ED8;">rmsimpo@rodolfoschiro.com.ar</a>
               /
               <a href="mailto:rmsexpo@rodolfoschiro.com.ar" style="color:#1D4ED8;">rmsexpo@rodolfoschiro.com.ar</a>
@@ -110,7 +98,7 @@ export async function POST(req: NextRequest) {
       .from('operaciones')
       .update({ liberacion })
       .eq('id', id)
-      .select('cliente, factura, crt, despacho')
+      .select('interno, cliente, factura, crt')
       .single()
 
     if (updateError) {
@@ -134,8 +122,8 @@ export async function POST(req: NextRequest) {
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
-          subject: `Liberación de mercadería — Factura ${op.factura ?? '—'}`,
-          html: buildEmailHtml({ ...op, liberacion }),
+          subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
+          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt }),
         })
         emailSent = true
       }
