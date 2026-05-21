@@ -13,6 +13,7 @@ function buildEmailHtml(op: {
   liberacion: string | null
   factura: string | null
   crt: string | null
+  despacho: string | null
 }): string {
   const bullet = (label: string, value: string) =>
     `<p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.6;">&#8226; <strong>${label}:</strong> ${value}</p>`
@@ -41,6 +42,7 @@ function buildEmailHtml(op: {
               ${bullet('Fecha de liberación', formatDateLong(op.liberacion))}
               ${bullet('Factura', op.factura ?? '—')}
               ${bullet('CRT', op.crt ?? '—')}
+              ${bullet('Despacho', op.despacho ?? '—')}
             </div>
             <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
               Para coordinar fecha y horario de arribo, favor contactar con el transporte.
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
       .from('operaciones')
       .update({ liberacion })
       .eq('id', id)
-      .select('interno, cliente, factura, crt')
+      .select('interno, cliente, factura, crt, despacho')
       .single()
 
     if (updateError) {
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest) {
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
-          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt }),
+          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho }),
         })
         emailSent = true
       }
