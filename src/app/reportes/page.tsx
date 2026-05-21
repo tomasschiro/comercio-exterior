@@ -44,7 +44,7 @@ export default async function ReportesPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Header email={user.email} rol={userRol} />
       <main style={{ flex: 1, maxWidth: 1536, margin: '0 auto', width: '100%', padding: '24px' }}>
-        <DashboardReportes operaciones={operaciones ?? []} />
+        <DashboardReportes operaciones={operaciones ?? []} userRol={userRol} />
       </main>
     </div>
   )

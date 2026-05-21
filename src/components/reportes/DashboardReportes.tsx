@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 import type { Operacion } from '@/types/database'
 import { getEstadoOperacion } from '@/types/database'
 import {
@@ -13,6 +14,7 @@ type TooltipValue = number | string | ReadonlyArray<number | string>
 
 interface Props {
   operaciones: Operacion[]
+  userRol?: string
 }
 
 function daysBetween(a: string, b: string): number {
@@ -111,9 +113,40 @@ const ESTADO_COLORS: Record<string, string> = {
 
 // ── Main ──────────────────────────────────────────────────
 
-export default function DashboardReportes({ operaciones }: Props) {
+export default function DashboardReportes({ operaciones, userRol }: Props) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
+  const [sending, setSending] = useState(false)
+  const [sendMsg, setSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function handleEnviarReporte() {
+    setSending(true)
+    setSendMsg(null)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) { setSendMsg({ ok: false, text: 'No hay sesión activa' }); return }
+      const res = await fetch('/api/cron/reporte-semanal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json() as { emailSent?: boolean; driveFileId?: string | null; error?: string }
+      if (res.ok) {
+        const parts = ['Reporte enviado']
+        if (json.emailSent) parts.push('por email')
+        if (json.driveFileId) parts.push('y subido a Drive')
+        setSendMsg({ ok: true, text: parts.join(' ') })
+      } else {
+        setSendMsg({ ok: false, text: json.error ?? `Error ${res.status}` })
+      }
+    } catch (e) {
+      setSendMsg({ ok: false, text: e instanceof Error ? e.message : 'Error desconocido' })
+    } finally {
+      setSending(false)
+    }
+  }
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
@@ -241,9 +274,31 @@ export default function DashboardReportes({ operaciones }: Props) {
       )}
 
       {/* Heading */}
-      <div>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Reportes</h1>
-        <p style={{ fontSize: 13, color: 'var(--ink-3)', margin: 0 }}>Resumen y análisis de operaciones de comercio exterior</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Reportes</h1>
+          <p style={{ fontSize: 13, color: 'var(--ink-3)', margin: 0 }}>Resumen y análisis de operaciones de comercio exterior</p>
+        </div>
+        {userRol === 'superadmin' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            <button
+              onClick={handleEnviarReporte}
+              disabled={sending}
+              style={{
+                padding: '8px 16px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: sending ? 'not-allowed' : 'pointer',
+                background: sending ? 'var(--surface-3)' : 'var(--ink-1)', color: sending ? 'var(--ink-3)' : '#FFFFFF',
+                border: 'none', whiteSpace: 'nowrap', transition: 'background 120ms',
+              }}
+            >
+              {sending ? 'Enviando…' : 'Enviar reporte ahora'}
+            </button>
+            {sendMsg && (
+              <p style={{ fontSize: 12, margin: 0, color: sendMsg.ok ? 'var(--ok)' : 'var(--bad)' }}>
+                {sendMsg.text}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}

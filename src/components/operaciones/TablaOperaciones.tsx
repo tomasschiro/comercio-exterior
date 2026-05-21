@@ -401,7 +401,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   }
 
   const pendientes = operaciones.filter(op => !op.liberacion)
-  const liberadas  = operaciones.filter(op => !!op.liberacion)
+  const liberadasCutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })()
+  const liberadas = operaciones.filter(op => !!op.liberacion && op.liberacion >= liberadasCutoff)
   const base = section === 'pendientes' ? pendientes : liberadas
 
   const filtradas = base.filter(op => {
