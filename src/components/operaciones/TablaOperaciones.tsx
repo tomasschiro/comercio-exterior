@@ -114,7 +114,7 @@ interface Props {
   userRol?: string
 }
 
-export default function TablaOperaciones({ userEmail, userId }: Props) {
+export default function TablaOperaciones({ userEmail, userId, userRol }: Props) {
   const [operaciones, setOperaciones] = useState<Operacion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -142,6 +142,11 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const suppressBlurRef = useRef(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const sortRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; interno: number | null } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
@@ -204,6 +209,15 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [sortOpen])
+
+  useEffect(() => {
+    if (!moreOpen) return
+    function handler(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [moreOpen])
 
   useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda, filterDesde, filterHasta])
 
@@ -320,6 +334,36 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
       setPanelOp(oldOp)
       throw new Error(error)
     }
+  }
+
+  async function deleteOperacion(id: number): Promise<string | null> {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return 'No hay sesión activa'
+    const res = await fetch('/api/operaciones/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      return (json.error as string) || `Error ${res.status}`
+    }
+    return null
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    const err = await deleteOperacion(deleteConfirm.id)
+    setDeleting(false)
+    if (!err) {
+      setOperaciones(prev => prev.filter(op => op.id !== deleteConfirm.id))
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(deleteConfirm.id); return next })
+      if (panelOp?.id === deleteConfirm.id) setPanelOp(null)
+    }
+    setDeleteConfirm(null)
   }
 
   const pendientes = operaciones.filter(op => !op.liberacion)
@@ -632,7 +676,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         .st-interno  { position: sticky; left: 4px;   z-index: 2; background: ${PAGE_BG}; }
         .st-cliente  { position: sticky; left: 66px;  z-index: 2; background: ${PAGE_BG}; }
         .st-action   { position: sticky; right: 0px;  z-index: 2; background: ${PAGE_BG}; }
-        .st-estado   { position: sticky; right: 32px; z-index: 2; background: ${PAGE_BG}; }
+        .st-estado   { position: sticky; right: 56px; z-index: 2; background: ${PAGE_BG}; }
         .row-h:hover .st-interno  { background: ${ROW_HOVER}; }
         .row-h:hover .st-cliente  { background: ${ROW_HOVER}; }
         .row-h:hover .st-action   { background: ${ROW_HOVER}; }
@@ -843,11 +887,50 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
-          <button className="tbtn-icon" title="Más opciones">
-            <svg style={{ width: 14, height: 14 }} fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
-            </svg>
-          </button>
+          <div ref={moreRef} style={{ position: 'relative' }}>
+            <button className="tbtn-icon" onClick={() => setMoreOpen(v => !v)} title="Más opciones">
+              <svg style={{ width: 14, height: 14 }} fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 8, boxShadow: '0 4px 16px rgba(31,27,20,.10)', padding: 4, minWidth: 200 }}>
+                {([
+                  {
+                    label: 'Exportar Excel',
+                    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
+                    onClick: () => { handleExport(); setMoreOpen(false) },
+                  },
+                  {
+                    label: 'Exportar CSV',
+                    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
+                    onClick: () => { handleExport(); setMoreOpen(false) },
+                  },
+                ] as { label: string; icon: React.ReactNode; onClick: () => void }[]).map(item => (
+                  <button key={item.label} onClick={item.onClick}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', background: 'transparent', color: '#1F1B14', fontWeight: 400, fontFamily: 'inherit', transition: 'background 80ms' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F5F1EB' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <svg style={{ width: 13, height: 13, flexShrink: 0, color: '#7A7158' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">{item.icon}</svg>
+                    {item.label}
+                  </button>
+                ))}
+                <div style={{ height: 1, background: '#E8DFC5', margin: '4px 0' }} />
+                <button
+                  onClick={() => { setSelectedIds(new Set(filtradas.map(op => op.id))); setMoreOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', background: 'transparent', color: '#1F1B14', fontWeight: 400, fontFamily: 'inherit', transition: 'background 80ms' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F5F1EB' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <svg style={{ width: 13, height: 13, flexShrink: 0, color: '#7A7158' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Seleccionar todas <span style={{ color: '#ADA482', marginLeft: 2 }}>({filtradas.length})</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {filtrosOpen && (
@@ -883,6 +966,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           </div>
         )}
 
+        {selectedIds.size > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 8, marginBottom: 10, fontSize: 13, color: '#3730A3' }}>
+            <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span><strong>{selectedIds.size}</strong> fila{selectedIds.size !== 1 ? 's' : ''} seleccionada{selectedIds.size !== 1 ? 's' : ''}</span>
+            <button onClick={() => setSelectedIds(new Set())}
+              style={{ marginLeft: 'auto', fontSize: 12, color: '#3730A3', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(55,48,163,0.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+            >
+              Deseleccionar todo
+            </button>
+          </div>
+        )}
+
         {error && (
           <div style={{ padding: '10px 14px', background: '#FBDDD4', border: '1px solid #F9C7BB', borderRadius: 6, fontSize: 13, color: '#991B1B', marginBottom: 10 }}>
             <strong>Error:</strong> {error}
@@ -912,7 +1011,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 <col style={{ width: 68 }} />   {/* nota ent */}
                 <col style={{ width: 96 }} />   {/* liberacion */}
                 {innerTab === 'todas' && <col style={{ width: 90 }} />}
-                <col style={{ width: 32 }} />   {/* action */}
+                <col style={{ width: 56 }} />   {/* action */}
               </colgroup>
               <thead>
                 <tr style={{ borderBottom: '1px solid #EDE9E3' }}>
@@ -934,7 +1033,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                   <th style={{ ...TH, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
                   {innerTab === 'todas' && <th style={TH}>Cargado por</th>}
-                  <th style={{ ...TH, width: 32, padding: '8px 4px' }} className="st-action" />
+                  <th style={{ ...TH, width: 56, padding: '8px 4px' }} className="st-action" />
                 </tr>
               </thead>
               <tbody>
@@ -1054,13 +1153,34 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                           </td>
                         )}
 
-                        <td style={{ padding: '0 4px', overflow: 'hidden', textAlign: 'center', verticalAlign: 'middle' }} className="st-action">
-                          <button onClick={() => setPanelOp(op)} title="Ver detalle" className="act-btn"
-                            style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#7A7158', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}>
-                            <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </button>
+                        <td style={{ padding: '0 4px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-action">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                            {selectedIds.size > 0 && (
+                              <input type="checkbox" checked={selectedIds.has(op.id)}
+                                onChange={e => setSelectedIds(prev => {
+                                  const next = new Set(prev)
+                                  if (e.target.checked) next.add(op.id)
+                                  else next.delete(op.id)
+                                  return next
+                                })}
+                                style={{ width: 13, height: 13, accentColor: '#3730A3', cursor: 'pointer', flexShrink: 0 }}
+                              />
+                            )}
+                            <button onClick={() => setPanelOp(op)} title="Ver detalle" className="act-btn"
+                              style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#7A7158', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: selectedIds.size > 0 ? 1 : 0, transition: 'opacity 100ms, background 100ms' }}>
+                              <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </button>
+                            {userRol === 'superadmin' && (
+                              <button onClick={() => setDeleteConfirm({ id: op.id, interno: op.interno })} title="Eliminar operación" className="act-btn"
+                                style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#991B1B', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}>
+                                <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -1137,6 +1257,41 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
                 onMouseEnter={e => { e.currentTarget.style.background = '#000000' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#1F1B14' }}
               >Guardar</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {deleteConfirm && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)' }} onClick={() => !deleting && setDeleteConfirm(null)} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 70, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 12, boxShadow: '0 8px 32px rgba(31,27,20,.18)', padding: '24px 28px', width: 360 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FBDDD4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg style={{ width: 18, height: 18, color: '#991B1B' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#1F1B14' }}>Eliminar operación</h3>
+                <p style={{ margin: 0, fontSize: 13, color: '#4A4332', lineHeight: 1.5 }}>
+                  ¿Eliminar la operación <strong>#{deleteConfirm.interno ?? deleteConfirm.id}</strong>? Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
+                style={{ padding: '7px 16px', fontSize: 13, border: '1px solid #E8DFC5', borderRadius: 6, background: '#FFFFFF', color: '#4A4332', cursor: deleting ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                onMouseEnter={e => { if (!deleting) e.currentTarget.style.background = '#F5F1EB' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF' }}
+              >
+                Cancelar
+              </button>
+              <button onClick={handleDeleteConfirmed} disabled={deleting}
+                style={{ padding: '7px 16px', fontSize: 13, border: 'none', borderRadius: 6, background: deleting ? '#C9675E' : '#991B1B', color: '#FFFFFF', cursor: deleting ? 'default' : 'pointer', fontWeight: 500, fontFamily: 'inherit', minWidth: 100 }}
+              >
+                {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
             </div>
           </div>
         </>
