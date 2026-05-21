@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
         const resend = new Resend(resendKey)
         await resend.emails.send({
-          from: 'RMS Comercio Exterior <no-reply@rmscomex.com>',
+          from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
           subject: `Liberación de mercadería — Factura ${op.factura ?? '—'}`,
           html: buildEmailHtml({ ...op, liberacion }),
