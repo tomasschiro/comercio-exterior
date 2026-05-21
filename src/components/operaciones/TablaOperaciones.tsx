@@ -134,8 +134,14 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
   const [page, setPage] = useState(1)
   const [loadedAt, setLoadedAt] = useState<Date>(new Date())
   const [timeAgoStr, setTimeAgoStr] = useState('hace un momento')
+  const [sortKey, setSortKey] = useState<'reciente' | 'antigua' | 'cliente' | 'interno' | 'dias'>('reciente')
+  const [sortOpen, setSortOpen] = useState(false)
+  const [filtrosOpen, setFiltrosOpen] = useState(false)
+  const [filterDesde, setFilterDesde] = useState('')
+  const [filterHasta, setFilterHasta] = useState('')
   const suppressBlurRef = useRef(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const sortRef = useRef<HTMLDivElement>(null)
 
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
@@ -184,13 +190,22 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
         if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModalOpen(true) }
         if (e.key === '/') { e.preventDefault(); searchRef.current?.focus() }
       }
-      if (e.key === 'Escape') { searchRef.current?.blur() }
+      if (e.key === 'Escape') { searchRef.current?.blur(); setSortOpen(false) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda])
+  useEffect(() => {
+    if (!sortOpen) return
+    function handler(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [sortOpen])
+
+  useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda, filterDesde, filterHasta])
 
 
   function setCellStatus(id: number, field: string, status: CellStatus | null) {
@@ -317,24 +332,69 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
     if (chipRetenidas && op.senasa_estado !== 'retenida') return false
     if (busqueda) {
       const q = busqueda.toLowerCase()
-      return (
+      if (!(
         op.cliente?.toLowerCase().includes(q) ||
         op.despacho?.toLowerCase().includes(q) ||
         op.crt?.toLowerCase().includes(q) ||
         op.factura?.toLowerCase().includes(q) ||
         op.oc?.toLowerCase().includes(q) ||
         String(op.interno ?? '').includes(q)
-      )
+      )) return false
     }
+    const opDate = op.created_at ? op.created_at.split('T')[0] : ''
+    if (filterDesde && opDate < filterDesde) return false
+    if (filterHasta && opDate > filterHasta) return false
     return true
   })
 
   const misCount = userId ? base.filter(op => op.created_by === userId).length : 0
   const atrasadasCount = base.filter(isAtrasada).length
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
+  const sorted = [...filtradas].sort((a, b) => {
+    if (sortKey === 'antigua')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    if (sortKey === 'cliente')  return (a.cliente ?? '').localeCompare(b.cliente ?? '', 'es')
+    if (sortKey === 'interno')  return (b.interno ?? 0) - (a.interno ?? 0)
+    if (sortKey === 'dias')     return getDiasEnEtapa(b) - getDiasEnEtapa(a)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
   const totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE))
-  const paginated = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const totalCols = innerTab === 'todas' ? 20 : 19
+
+  function handleExport() {
+    const headers = ['Interno', 'Recep. Docs', 'Cliente', 'OC', 'Factura', 'CRT', 'Transporte', 'Ped. Fondos', 'SENASA', 'Est. SENASA', 'Oficialización', 'Despacho', 'Canal', 'Aviso', 'Nota Entrega', 'Liberación', 'Cargado por', 'Fecha alta']
+    const rows = filtradas.map(op => [
+      op.interno ?? '',
+      op.recep_doc ?? '',
+      op.cliente ?? '',
+      op.oc ?? '',
+      op.factura ?? '',
+      op.crt ?? '',
+      op.transporte ?? '',
+      op.fecha_pedido_fondos ?? '',
+      op.senasa ?? '',
+      op.senasa_estado ?? '',
+      op.oficializacion ?? '',
+      op.despacho ?? '',
+      op.canal ?? '',
+      op.aviso ?? '',
+      op.nota_entrega ?? '',
+      op.liberacion ?? '',
+      op.created_by_email ?? '',
+      op.created_at ? op.created_at.split('T')[0] : '',
+    ])
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const bom = '﻿'
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `operaciones-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   function renderCell(op: Operacion, field: keyof Operacion, extraStyle?: React.CSSProperties) {
     const key = `${op.id}-${field}`
@@ -630,6 +690,7 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
+              onClick={handleExport}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 28, fontSize: 12, fontWeight: 500, color: '#1F1B14', background: SURFACE, border: '1px solid #E8DFC5', borderRadius: 6, cursor: 'pointer', transition: 'background 80ms' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#F2ECDC' }}
               onMouseLeave={e => { e.currentTarget.style.background = SURFACE }}
@@ -716,18 +777,47 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
 
           <div className="toolbar-sep" />
 
-          <button className="chip">
+          <button onClick={() => setFiltrosOpen(v => !v)} className={`chip${filtrosOpen || filterDesde || filterHasta ? ' active' : ''}`}>
             <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M11 12h2" />
             </svg>
             Filtros
+            {(filterDesde || filterHasta) && <span className="chip-count">•</span>}
           </button>
-          <button className="chip">
-            <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
-            Ordenar
-          </button>
+          <div ref={sortRef} style={{ position: 'relative' }}>
+            <button onClick={() => setSortOpen(v => !v)} className={`chip${sortOpen ? ' active' : ''}`}>
+              <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+              Ordenar
+            </button>
+            {sortOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 8, boxShadow: '0 4px 16px rgba(31,27,20,.10)', padding: 4, minWidth: 220 }}>
+                {([
+                  { key: 'reciente', label: 'Más recientes primero' },
+                  { key: 'antigua',  label: 'Más antiguas primero' },
+                  { key: 'cliente',  label: 'Por cliente (A–Z)' },
+                  { key: 'interno',  label: 'Por interno (mayor a menor)' },
+                  { key: 'dias',     label: 'Por días sin liberar (mayor a menor)' },
+                ] as { key: typeof sortKey; label: string }[]).map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => { setSortKey(opt.key); setSortOpen(false) }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px', fontSize: 13, borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'left', background: sortKey === opt.key ? '#1F1B14' : 'transparent', color: sortKey === opt.key ? '#FFFFFF' : '#1F1B14', fontWeight: sortKey === opt.key ? 500 : 400, transition: 'background 80ms', fontFamily: 'inherit' }}
+                    onMouseEnter={e => { if (sortKey !== opt.key) e.currentTarget.style.background = '#F5F1EB' }}
+                    onMouseLeave={e => { if (sortKey !== opt.key) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {opt.label}
+                    {sortKey === opt.key && (
+                      <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ flex: 1 }} />
 
@@ -759,6 +849,39 @@ export default function TablaOperaciones({ userEmail, userId }: Props) {
             </svg>
           </button>
         </div>
+
+        {filtrosOpen && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 12, color: '#7A7158', fontWeight: 500, whiteSpace: 'nowrap' }}>Alta entre</span>
+            <input
+              type="date"
+              value={filterDesde}
+              onChange={e => setFilterDesde(e.target.value)}
+              style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #E8DFC5', borderRadius: 5, color: '#1F1B14', background: '#FAFAF8', outline: 'none', fontFamily: 'inherit' }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#1E40AF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,.12)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#E8DFC5'; e.currentTarget.style.boxShadow = 'none' }}
+            />
+            <span style={{ fontSize: 12, color: '#ADA482' }}>y</span>
+            <input
+              type="date"
+              value={filterHasta}
+              onChange={e => setFilterHasta(e.target.value)}
+              style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #E8DFC5', borderRadius: 5, color: '#1F1B14', background: '#FAFAF8', outline: 'none', fontFamily: 'inherit' }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#1E40AF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(29,78,216,.12)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#E8DFC5'; e.currentTarget.style.boxShadow = 'none' }}
+            />
+            {(filterDesde || filterHasta) && (
+              <button
+                onClick={() => { setFilterDesde(''); setFilterHasta('') }}
+                style={{ fontSize: 12, color: '#7A7158', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F2ECDC'; e.currentTarget.style.color = '#1F1B14' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#7A7158' }}
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
 
         {error && (
           <div style={{ padding: '10px 14px', background: '#FBDDD4', border: '1px solid #F9C7BB', borderRadius: 6, fontSize: 13, color: '#991B1B', marginBottom: 10 }}>
