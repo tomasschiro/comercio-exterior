@@ -1181,12 +1181,16 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                             {op.interno ?? '—'}
                             {hasBothTypes && (
                               <span style={{
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: 600,
-                                letterSpacing: '0.08em',
+                                letterSpacing: '0.05em',
                                 color: (op.tipo ?? 'importacion') === 'importacion' ? '#1D4ED8' : '#15803D',
+                                background: (op.tipo ?? 'importacion') === 'importacion' ? '#EFF6FF' : '#DCFCE7',
+                                borderRadius: 4,
+                                padding: '2px 6px',
                                 lineHeight: 1,
-                                marginTop: 1,
+                                marginTop: 2,
+                                display: 'inline-block',
                               }}>
                                 {(op.tipo ?? 'importacion') === 'importacion' ? 'IMPO' : 'EXPO'}
                               </span>

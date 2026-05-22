@@ -39,6 +39,11 @@ function dayBadge(days: number): string {
   return `<span class="badge ${cls}">${days}d</span>`
 }
 
+function tipoBadge(tipo: string | null): string {
+  const isExpo = tipo === 'exportacion'
+  return `<span class="badge-tipo-${isExpo ? 'expo' : 'impo'}">${isExpo ? 'EXPO' : 'IMPO'}</span>`
+}
+
 // ── Email HTML ─────────────────────────────────────────────
 
 function buildEmailHtml(data: {
@@ -100,8 +105,10 @@ function buildPdfHtml(data: {
   demoradas: Operacion[]
   promedio: number | null
   cutoff: string
+  importacionesActivas: number
+  exportacionesActivas: number
 }): string {
-  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff } = data
+  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff, importacionesActivas, exportacionesActivas } = data
 
   const clientMap = new Map<string, { total: number; liberadas: number; pendientes: number }>()
   for (const op of ops) {
@@ -139,7 +146,7 @@ function buildPdfHtml(data: {
     .map(op => {
       const dias = op.recep_doc && op.liberacion ? daysBetween(op.recep_doc, op.liberacion) : null
       return `<tr>
-        <td>${esc(op.interno)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
+        <td>${esc(op.interno)}</td><td>${tipoBadge(op.tipo)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
         <td>${esc(op.crt)}</td><td>${esc(op.transporte)}</td>
         <td>${fmtDate(op.recep_doc)}</td><td>${fmtDate(op.liberacion)}</td>
         <td>${dias !== null ? dayBadge(dias) : '—'}</td>
@@ -156,7 +163,7 @@ function buildPdfHtml(data: {
     .map(op => {
       const dias = op.recep_doc ? daysBetween(op.recep_doc, todayIso) : null
       return `<tr>
-        <td>${esc(op.interno)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
+        <td>${esc(op.interno)}</td><td>${tipoBadge(op.tipo)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
         <td>${esc(op.crt)}</td><td>${esc(op.transporte)}</td>
         <td>${fmtDate(op.recep_doc)}</td>
         <td>${dias !== null ? dayBadge(dias) : '—'}</td>
@@ -211,7 +218,7 @@ function buildPdfHtml(data: {
 
   .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 28px;
   }
@@ -287,8 +294,12 @@ function buildPdfHtml(data: {
   .bg { background: #D1FAE5; color: #065F46; }
   .by { background: #FEF3C7; color: #92400E; }
   .br { background: #FEE2E2; color: #991B1B; }
+  .badge-tipo-impo { display: inline-block; padding: 2px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; background: #EFF6FF; color: #1D4ED8; letter-spacing: 0.04em; white-space: nowrap; }
+  .badge-tipo-expo { display: inline-block; padding: 2px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; background: #DCFCE7; color: #15803D; letter-spacing: 0.04em; white-space: nowrap; }
 
   .red-val { color: #DC2626; }
+  .impo-val { color: #1D4ED8; }
+  .expo-val { color: #15803D; }
 </style>
 </head>
 <body>
@@ -331,6 +342,14 @@ function buildPdfHtml(data: {
         <div class="lbl">Clientes activos</div>
         <div class="val">${clientesActivos}</div>
       </div>
+      <div class="kpi">
+        <div class="lbl">Importaciones activas</div>
+        <div class="val impo-val">${importacionesActivas}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Exportaciones activas</div>
+        <div class="val expo-val">${exportacionesActivas}</div>
+      </div>
     </div>
 
     <div class="two-col">
@@ -363,11 +382,11 @@ function buildPdfHtml(data: {
     <table>
       <thead>
         <tr>
-          <th>Interno</th><th>Cliente</th><th>Factura</th><th>CRT</th>
+          <th>Interno</th><th>Tipo</th><th>Cliente</th><th>Factura</th><th>CRT</th>
           <th>Transporte</th><th>Recep.</th><th>Liberación</th><th>Días</th><th>Responsable</th>
         </tr>
       </thead>
-      <tbody>${libRows || noData(9, 'Sin operaciones liberadas esta semana')}</tbody>
+      <tbody>${libRows || noData(10, 'Sin operaciones liberadas esta semana')}</tbody>
     </table>
   </div>
 </div>
@@ -383,11 +402,11 @@ function buildPdfHtml(data: {
     <table>
       <thead>
         <tr>
-          <th>Interno</th><th>Cliente</th><th>Factura</th><th>CRT</th>
+          <th>Interno</th><th>Tipo</th><th>Cliente</th><th>Factura</th><th>CRT</th>
           <th>Transporte</th><th>Recep.</th><th>Días acum.</th><th>Responsable</th>
         </tr>
       </thead>
-      <tbody>${pendRows || noData(8, 'Sin operaciones pendientes')}</tbody>
+      <tbody>${pendRows || noData(9, 'Sin operaciones pendientes')}</tbody>
     </table>
   </div>
 </div>
@@ -455,6 +474,8 @@ async function runReporte(triggeredBy = 'Cron automático'): Promise<NextRespons
   const liberadasSemana = ops.filter(op => op.liberacion && op.liberacion >= cutoff)
   const pendientes = ops.filter(op => !op.liberacion)
   const demoradas = pendientes.filter(op => op.recep_doc && daysBetween(op.recep_doc, todayIso) > 10)
+  const importacionesActivas = pendientes.filter(op => (op.tipo ?? 'importacion') === 'importacion').length
+  const exportacionesActivas = pendientes.filter(op => op.tipo === 'exportacion').length
 
   const diasArr = ops
     .filter(op => op.liberacion && op.recep_doc)
@@ -467,6 +488,7 @@ async function runReporte(triggeredBy = 'Cron automático'): Promise<NextRespons
   const html = buildPdfHtml({
     todayIso, todayDisplay, weekRange, weekStartStr,
     ops, liberadasSemana, pendientes, demoradas, promedio, cutoff,
+    importacionesActivas, exportacionesActivas,
   })
 
   const pdfBuffer = await generatePdf(html)
