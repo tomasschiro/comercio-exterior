@@ -436,6 +436,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
   const importacionCount = base.filter(op => (op.tipo ?? 'importacion') === 'importacion').length
   const exportacionCount = base.filter(op => op.tipo === 'exportacion').length
+  const hasBothTypes = filtradas.some(op => (op.tipo ?? 'importacion') === 'importacion') && filtradas.some(op => op.tipo === 'exportacion')
   const sorted = [...filtradas].sort((a, b) => {
     if (sortKey === 'antigua')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     if (sortKey === 'cliente')  return (a.cliente ?? '').localeCompare(b.cliente ?? '', 'es')
@@ -761,29 +762,29 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
         th.st-estado  { background: ${PAGE_BG}; z-index: 3; }
 
         /* Segmented control — Mis / Todas — pill style igual que chips */
-        .seg { display: inline-flex; gap: 6px; }
-        .seg-btn { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 13px; font-weight: 400; color: #4A4332; cursor: pointer; white-space: nowrap; transition: background 80ms, border-color 80ms, color 80ms; }
+        .seg { display: inline-flex; gap: 4px; }
+        .seg-btn { display: inline-flex; align-items: center; height: 28px; padding: 0 8px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 12px; font-weight: 400; color: #4A4332; cursor: pointer; white-space: nowrap; transition: background 80ms, border-color 80ms, color 80ms; }
         .seg-btn:hover { background: #F5F1EB; border-color: #D6C9A0; }
         .seg-btn.on { background: #1F1B14; color: #FFFFFF; border-color: #1F1B14; font-weight: 500; }
         .seg-btn.on span { color: rgba(255,255,255,0.5); }
 
         /* Chips — Atrasadas, Retenidas, Filtros, Ordenar */
-        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 13px; color: #4A4332; cursor: pointer; height: 32px; white-space: nowrap; transition: border-color 80ms, background 80ms; }
+        .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; font-size: 12px; color: #4A4332; cursor: pointer; height: 28px; white-space: nowrap; transition: border-color 80ms, background 80ms; }
         .chip:hover { background: #F5F1EB; border-color: #D6C9A0; }
         .chip.active { background: #1F1B14 !important; color: #FFFFFF !important; border-color: #1F1B14 !important; font-weight: 500 !important; }
-        .chip-count { background: rgba(0,0,0,0.07); border-radius: 100px; padding: 1px 7px; font-size: 11px; color: inherit; margin-left: 2px; line-height: 1.5; }
+        .chip-count { background: rgba(0,0,0,0.07); border-radius: 100px; padding: 1px 5px; font-size: 10px; color: inherit; margin-left: 1px; line-height: 1.5; }
         .chip.active .chip-count { background: rgba(255,255,255,0.2); color: #FFFFFF; }
 
         /* Toolbar separator */
-        .toolbar-sep { width: 1px; height: 20px; background: #E5E0D8; margin: 0 2px; flex-shrink: 0; }
+        .toolbar-sep { width: 1px; height: 16px; background: #E8E5DE; margin: 0 2px; flex-shrink: 0; }
 
         /* Search box */
-        .search-box { display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #E5E0D8; border-radius: 20px; padding: 0 14px; height: 32px; min-width: 220px; transition: border-color 80ms, box-shadow 80ms; }
+        .search-box { display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #E5E0D8; border-radius: 20px; padding: 0 10px; height: 28px; min-width: 140px; transition: border-color 80ms, box-shadow 80ms; }
         .search-box:focus-within { border-color: #1E40AF; box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
-        .search-box input { border: none; background: transparent; outline: none; font-size: 13px; color: #1F1B14; width: 100%; }
+        .search-box input { border: none; background: transparent; outline: none; font-size: 12px; color: #1F1B14; width: 100%; }
 
         /* Icon-only toolbar buttons */
-        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
+        .tbtn-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #E5E0D8; border-radius: 20px; background: #FFFFFF; color: #7A7158; cursor: pointer; transition: background 80ms, color 80ms; }
         .tbtn-icon:hover { background: #F5F1EB; color: #1F1B14; }
 
         /* Keyboard bar */
@@ -860,7 +861,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
         </div>
 
         {/* ── Toolbar ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '6px 0', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', padding: '6px 0', marginBottom: 10 }}>
           {/* Segmented: Mis / Todas */}
           <div className="seg">
             <button className={`seg-btn${innerTab === 'mis' ? ' on' : ''}`} onClick={() => setInnerTab('mis')}>
@@ -1157,7 +1158,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                     const atrasada = isAtrasada(op)
 
                     return (
-                      <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 40 }}>
+                      <tr key={op.id} className="row-h" style={{ borderBottom: '1px solid #EDE9E3', height: 38 }}>
 
                         {/* Stripe — 3px inset shadow on left for atrasada rows */}
                         <td className="col-stripe" style={atrasada ? { boxShadow: 'inset 3px 0 0 #991B1B' } : undefined} />
@@ -1172,11 +1173,24 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                               fontWeight: 700,
                               color: atrasada ? '#991B1B' : '#2563EB',
                               lineHeight: 1.2,
-                              display: 'inline-flex',
-                              alignItems: 'center',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'flex-start',
                             }}
                           >
                             {op.interno ?? '—'}
+                            {hasBothTypes && (
+                              <span style={{
+                                fontSize: 9,
+                                fontWeight: 600,
+                                letterSpacing: '0.08em',
+                                color: (op.tipo ?? 'importacion') === 'importacion' ? '#1D4ED8' : '#15803D',
+                                lineHeight: 1,
+                                marginTop: 1,
+                              }}>
+                                {(op.tipo ?? 'importacion') === 'importacion' ? 'IMPO' : 'EXPO'}
+                              </span>
+                            )}
                           </div>
                         </td>
 
