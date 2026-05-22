@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 function formatDateLong(d: string | null): string {
@@ -126,9 +126,14 @@ export async function POST(req: NextRequest) {
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
         let logoDataUri = ''
         try {
-          const buf = readFileSync(join(process.cwd(), 'public', 'logo-rms.png'))
-          logoDataUri = `data:image/png;base64,${buf.toString('base64')}`
-        } catch { /* proceed without logo */ }
+          const logoPath = join(process.cwd(), 'public', 'logo-rms.png')
+          const logoExists = existsSync(logoPath)
+          const buf = logoExists ? readFileSync(logoPath) : null
+          logoDataUri = buf ? `data:image/png;base64,${buf.toString('base64')}` : ''
+          console.log('[Mail] logo encontrado:', logoExists, 'base64 length:', logoDataUri.length)
+        } catch (e) {
+          console.log('[Mail] error cargando logo:', e)
+        }
 
         const resend = new Resend(resendKey)
         await resend.emails.send({
