@@ -132,12 +132,11 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 360 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 8, height: 8, background: 'var(--ink-1)', borderRadius: 2 }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-1)', letterSpacing: '-0.01em' }}>
-              R.M.S Comercio Exterior
-            </span>
-          </div>
+          <img
+            src="https://res.cloudinary.com/djg4pcim7/image/upload/v1779466438/logo-rms_divfey.png"
+            alt="RMS Comercio Exterior"
+            style={{ height: 120, width: 'auto', display: 'block', margin: '0 auto 12px' }}
+          />
           <p style={{ fontSize: 12, color: 'var(--ink-4)', margin: 0 }}>Gestión de Operaciones</p>
         </div>
 

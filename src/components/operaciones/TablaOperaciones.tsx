@@ -176,6 +176,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; interno: number | null } | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null } | null>(null)
+  const [sendingMail, setSendingMail] = useState(false)
 
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
@@ -268,21 +270,18 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     setEditing({ id: op.id, field, value })
   }
 
-  async function liberarOperacion(id: number, liberacion: string | null): Promise<string | null> {
+  async function enviarMailLiberacion(id: number): Promise<void> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
-    if (!token) return 'No hay sesión activa'
-    const res = await fetch('/api/operaciones/liberar', {
+    if (!token) return
+    await fetch('/api/operaciones/liberar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id, liberacion }),
+      body: JSON.stringify({ id }),
     })
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}))
-      return (json.error as string) || `Error ${res.status}`
-    }
-    return null
+    setOperaciones(prev => prev.map(op => op.id === id ? { ...op, mail_enviado: true } : op))
+    if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, mail_enviado: true } : null)
   }
 
   async function updateOperacion(id: number, updates: Record<string, unknown>): Promise<string | null> {
@@ -316,9 +315,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: parsed } : null)
     setEditing(null)
     setCellStatus(id, field, 'saving')
-    const error = field === 'liberacion'
-      ? await liberarOperacion(id, parsed as string | null)
-      : await updateOperacion(id, { [field]: parsed })
+    const error = await updateOperacion(id, { [field]: parsed })
     if (error) {
       setOperaciones(prev => prev.map(op => op.id === id ? { ...op, [field]: oldValue } : op))
       if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, [field]: oldValue } : null)
@@ -327,6 +324,9 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     } else {
       setCellStatus(id, field, 'success')
       setTimeout(() => setCellStatus(id, field, null), 1200)
+      if (field === 'liberacion' && parsed !== null) {
+        setMailConfirmModal({ id, interno: oldOp.interno })
+      }
     }
   }
 
@@ -1099,7 +1099,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                   <th style={{ ...TH, cursor: 'help' }} title="Nota de entrega">Nota Ent.</th>
                   <th style={{ ...TH, cursor: 'help' }} title="Fecha de liberación">Liberación</th>
                   {innerTab === 'todas' && <th style={TH}>Cargado por</th>}
-                  <th style={{ ...TH, width: 56, padding: '8px 4px' }} className="st-action" />
+                  <th style={{ ...TH, width: 80, padding: '8px 4px' }} className="st-action" />
                 </tr>
               </thead>
               <tbody>
@@ -1238,6 +1238,16 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                               </svg>
                             </button>
+                            {op.liberacion && (
+                              <button tabIndex={-1}
+                                onClick={() => { if (!(op.mail_enviado ?? false)) setMailConfirmModal({ id: op.id, interno: op.interno }) }}
+                                title={(op.mail_enviado ?? false) ? 'Mail enviado' : 'Enviar notificación'}
+                                style={{ padding: 5, border: 'none', background: 'transparent', cursor: (op.mail_enviado ?? false) ? 'default' : 'pointer', color: (op.mail_enviado ?? false) ? '#16A34A' : '#9CA3AF', borderRadius: 4, display: 'flex', alignItems: 'center', transition: 'color 100ms' }}>
+                                <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                            )}
                             {userRol === 'superadmin' && (
                               <button tabIndex={-1} onClick={() => setDeleteConfirm({ id: op.id, interno: op.interno })} title="Eliminar operación" className="act-btn"
                                 style={{ padding: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: '#991B1B', borderRadius: 4, display: 'flex', alignItems: 'center', opacity: 0, transition: 'opacity 100ms, background 100ms' }}>
@@ -1323,6 +1333,48 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                 onMouseEnter={e => { e.currentTarget.style.background = '#000000' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#1F1B14' }}
               >Guardar</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {mailConfirmModal && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)' }} onClick={() => !sendingMail && setMailConfirmModal(null)} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 70, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 12, boxShadow: '0 8px 32px rgba(31,27,20,.18)', padding: '24px 28px', width: 360 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg style={{ width: 18, height: 18, color: '#1D4ED8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#1F1B14' }}>¿Notificar al cliente?</h3>
+                <p style={{ margin: 0, fontSize: 13, color: '#4A4332', lineHeight: 1.5 }}>
+                  Operación <strong>#{mailConfirmModal.interno ?? mailConfirmModal.id}</strong> fue liberada. ¿Deseas enviar la notificación al cliente?
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setMailConfirmModal(null)} disabled={sendingMail}
+                style={{ padding: '7px 16px', fontSize: 13, border: '1px solid #E8DFC5', borderRadius: 6, background: '#FFFFFF', color: '#4A4332', cursor: sendingMail ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                onMouseEnter={e => { if (!sendingMail) e.currentTarget.style.background = '#F5F1EB' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF' }}
+              >
+                No enviar ahora
+              </button>
+              <button
+                onClick={async () => {
+                  setSendingMail(true)
+                  await enviarMailLiberacion(mailConfirmModal.id)
+                  setSendingMail(false)
+                  setMailConfirmModal(null)
+                }}
+                disabled={sendingMail}
+                style={{ padding: '7px 16px', fontSize: 13, border: 'none', borderRadius: 6, background: sendingMail ? '#3B5FA0' : '#1D4ED8', color: '#FFFFFF', cursor: sendingMail ? 'default' : 'pointer', fontWeight: 500, fontFamily: 'inherit', minWidth: 100 }}
+              >
+                {sendingMail ? 'Enviando…' : 'Enviar'}
+              </button>
             </div>
           </div>
         </>

@@ -93,25 +93,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, liberacion } = (await req.json()) as { id: number; liberacion: string | null }
+    const { id } = (await req.json()) as { id: number }
 
     const admin = createClient(url, serviceKey)
 
-    // Update liberacion and retrieve fields needed for the email
-    const { data: op, error: updateError } = await admin
+    // Fetch op fields needed for the email
+    const { data: op, error: fetchError } = await admin
       .from('operaciones')
-      .update({ liberacion })
+      .select('interno, cliente, factura, crt, despacho, liberacion')
       .eq('id', id)
-      .select('interno, cliente, factura, crt, despacho')
       .single()
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message, code: updateError.code }, { status: 400 })
+    if (fetchError || !op) {
+      return NextResponse.json({ error: fetchError?.message ?? 'Not found' }, { status: 400 })
     }
 
     // Look up client email by name
     let emailSent = false
-    if (liberacion && op.cliente) {
+    if (op.liberacion && op.cliente) {
       const { data: clientData } = await admin
         .from('clientes')
         .select('email')
@@ -127,11 +126,13 @@ export async function POST(req: NextRequest) {
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
-          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho }),
+          html: buildEmailHtml({ interno: op.interno, liberacion: op.liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho }),
         })
         emailSent = true
       }
     }
+
+    await admin.from('operaciones').update({ mail_enviado: true }).eq('id', id)
 
     return NextResponse.json({ success: true, emailSent })
   } catch (e: unknown) {

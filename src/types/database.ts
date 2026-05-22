@@ -47,6 +47,7 @@ export interface Operacion {
   aviso: string | null
   nota_entrega: string | null
   liberacion: string | null
+  mail_enviado: boolean | null
   created_by: string | null
   created_by_email: string | null
   created_at: string
@@ -69,7 +70,7 @@ export function getEstadoOperacion(op: Operacion): EstadoOperacion {
   return 'Pendiente'
 }
 
-export type NuevaOperacion = Omit<Operacion, 'id' | 'created_at' | 'created_by' | 'created_by_email'>
+export type NuevaOperacion = Omit<Operacion, 'id' | 'created_at' | 'created_by' | 'created_by_email' | 'mail_enviado'>
 
 export interface ReporteSemanal {
   id: number
