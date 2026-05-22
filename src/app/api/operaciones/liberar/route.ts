@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
 
 function formatDateLong(d: string | null): string {
   if (!d) return '—'
@@ -10,15 +8,15 @@ function formatDateLong(d: string | null): string {
   return `${day}/${month}/${year}`
 }
 
+const LOGO_URL = 'https://rmscomex.vercel.app/logo-rms.png'
+
 function buildEmailHtml(op: {
   interno: number | null
   liberacion: string | null
   factura: string | null
   crt: string | null
   despacho: string | null
-  logoDataUri: string
 }): string {
-  const { logoDataUri } = op
   const bullet = (label: string, value: string) =>
     `<p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.6;">&#8226; <strong>${label}:</strong> ${value}</p>`
 
@@ -34,7 +32,7 @@ function buildEmailHtml(op: {
       <table width="580" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:8px;border:1px solid #E5E7EB;overflow:hidden;">
         <tr>
           <td style="background:#FFFFFF;padding:28px 32px 20px;text-align:center;border-bottom:2px solid #1F1B14;">
-            ${logoDataUri ? `<img src="${logoDataUri}" alt="RMS Comercio Exterior" height="70" style="height:70px;width:auto;display:block;margin:0 auto;" />` : '<p style="margin:0;font-size:13px;font-weight:600;color:#1F1B14;letter-spacing:0.04em;">RMS COMERCIO EXTERIOR</p>'}
+            <img src="${LOGO_URL}" alt="RMS Comercio Exterior" width="200" style="height:auto;display:block;margin:0 auto;" />
           </td>
         </tr>
         <tr>
@@ -124,23 +122,12 @@ export async function POST(req: NextRequest) {
 
       const resendKey = process.env.RESEND_API_KEY
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
-        let logoDataUri = ''
-        try {
-          const logoPath = join(process.cwd(), 'public', 'logo-rms.png')
-          const logoExists = existsSync(logoPath)
-          const buf = logoExists ? readFileSync(logoPath) : null
-          logoDataUri = buf ? `data:image/png;base64,${buf.toString('base64')}` : ''
-          console.log('[Mail] logo encontrado:', logoExists, 'base64 length:', logoDataUri.length)
-        } catch (e) {
-          console.log('[Mail] error cargando logo:', e)
-        }
-
         const resend = new Resend(resendKey)
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
-          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho, logoDataUri }),
+          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho }),
         })
         emailSent = true
       }
