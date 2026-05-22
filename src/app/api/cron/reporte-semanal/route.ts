@@ -44,7 +44,7 @@ async function getGoogleAccessToken(clientEmail: string, privateKey: string): Pr
   const now = Math.floor(Date.now() / 1000)
   const payload = {
     iss: clientEmail,
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
@@ -92,7 +92,7 @@ async function uploadToDrive(
   ].join('\r\n')
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id',
     {
       method: 'POST',
       headers: {
