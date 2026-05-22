@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 function formatDateLong(d: string | null): string {
   if (!d) return '—'
@@ -14,7 +16,9 @@ function buildEmailHtml(op: {
   factura: string | null
   crt: string | null
   despacho: string | null
+  logoDataUri: string
 }): string {
+  const { logoDataUri } = op
   const bullet = (label: string, value: string) =>
     `<p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.6;">&#8226; <strong>${label}:</strong> ${value}</p>`
 
@@ -30,7 +34,7 @@ function buildEmailHtml(op: {
       <table width="580" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:8px;border:1px solid #E5E7EB;overflow:hidden;">
         <tr>
           <td style="background:#FFFFFF;padding:28px 32px 20px;text-align:center;border-bottom:2px solid #1F1B14;">
-            <img src="https://rmscomex.vercel.app/logo-rms.png" alt="RMS Comercio Exterior" height="70" style="height:70px;width:auto;display:block;margin:0 auto;" />
+            ${logoDataUri ? `<img src="${logoDataUri}" alt="RMS Comercio Exterior" height="70" style="height:70px;width:auto;display:block;margin:0 auto;" />` : '<p style="margin:0;font-size:13px;font-weight:600;color:#1F1B14;letter-spacing:0.04em;">RMS COMERCIO EXTERIOR</p>'}
           </td>
         </tr>
         <tr>
@@ -120,12 +124,18 @@ export async function POST(req: NextRequest) {
 
       const resendKey = process.env.RESEND_API_KEY
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
+        let logoDataUri = ''
+        try {
+          const buf = readFileSync(join(process.cwd(), 'public', 'logo-rms.png'))
+          logoDataUri = `data:image/png;base64,${buf.toString('base64')}`
+        } catch { /* proceed without logo */ }
+
         const resend = new Resend(resendKey)
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
           to: [clientEmail],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
-          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho }),
+          html: buildEmailHtml({ interno: op.interno, liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho, logoDataUri }),
         })
         emailSent = true
       }

@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer-core'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import type { Operacion } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -463,10 +465,11 @@ async function runReporte(triggeredBy = 'Cron automático'): Promise<NextRespons
     ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
     : null
 
-  const logoDataUri = await fetch('https://rmscomex.vercel.app/logo-rms.png')
-    .then(r => r.arrayBuffer())
-    .then(buf => `data:image/png;base64,${Buffer.from(buf).toString('base64')}`)
-    .catch(() => '')
+  let logoDataUri = ''
+  try {
+    const logoBuf = readFileSync(join(process.cwd(), 'public', 'logo-rms.png'))
+    logoDataUri = `data:image/png;base64,${logoBuf.toString('base64')}`
+  } catch { /* proceed without logo */ }
 
   const html = buildPdfHtml({
     todayIso, todayDisplay, weekRange, weekStartStr,
