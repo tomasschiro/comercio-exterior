@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer-core'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import type { Operacion } from '@/types/database'
+
+const LOGO_URL = 'https://res.cloudinary.com/djg4pcim7/image/upload/v1779466438/logo-rms_divfey.png'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -100,9 +100,8 @@ function buildPdfHtml(data: {
   demoradas: Operacion[]
   promedio: number | null
   cutoff: string
-  logoDataUri: string
 }): string {
-  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff, logoDataUri } = data
+  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff } = data
 
   const clientMap = new Map<string, { total: number; liberadas: number; pendientes: number }>()
   for (const op of ops) {
@@ -298,7 +297,7 @@ function buildPdfHtml(data: {
 <div class="page">
   ${pageHeader(todayDisplay)}
   <div class="pc">
-    ${logoDataUri ? `<div style="margin-bottom:20px;"><img src="${logoDataUri}" alt="RMS Comercio Exterior" style="height:80px;width:auto;display:block;" /></div>` : ''}
+    <div style="margin-bottom:20px;"><img src="${LOGO_URL}" alt="RMS Comercio Exterior" style="height:80px;width:auto;display:block;" /></div>
     <div class="report-title">
       <h1>Reporte Semanal</h1>
       <div class="sub">Semana del ${weekRange}</div>
@@ -465,15 +464,9 @@ async function runReporte(triggeredBy = 'Cron automático'): Promise<NextRespons
     ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
     : null
 
-  let logoDataUri = ''
-  try {
-    const logoBuf = readFileSync(join(process.cwd(), 'public', 'logo-rms.png'))
-    logoDataUri = `data:image/png;base64,${logoBuf.toString('base64')}`
-  } catch { /* proceed without logo */ }
-
   const html = buildPdfHtml({
     todayIso, todayDisplay, weekRange, weekStartStr,
-    ops, liberadasSemana, pendientes, demoradas, promedio, cutoff, logoDataUri,
+    ops, liberadasSemana, pendientes, demoradas, promedio, cutoff,
   })
 
   const pdfBuffer = await generatePdf(html)

@@ -8,7 +8,7 @@ function formatDateLong(d: string | null): string {
   return `${day}/${month}/${year}`
 }
 
-const LOGO_URL = 'https://rmscomex.vercel.app/logo-rms.png'
+const LOGO_URL = 'https://res.cloudinary.com/djg4pcim7/image/upload/v1779466438/logo-rms_divfey.png'
 
 function buildEmailHtml(op: {
   interno: number | null
