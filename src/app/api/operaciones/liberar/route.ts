@@ -29,8 +29,8 @@ function buildEmailHtml(op: {
     <tr><td align="center">
       <table width="580" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:8px;border:1px solid #E5E7EB;overflow:hidden;">
         <tr>
-          <td style="background:#1F1B14;padding:20px 32px;">
-            <p style="margin:0;font-size:13px;font-weight:600;color:#FFFFFF;letter-spacing:0.04em;">RMS COMERCIO EXTERIOR</p>
+          <td style="background:#FFFFFF;padding:28px 32px 20px;text-align:center;border-bottom:2px solid #1F1B14;">
+            <img src="https://rmscomex.vercel.app/logo-rms.png" alt="RMS Comercio Exterior" height="70" style="height:70px;width:auto;display:block;margin:0 auto;" />
           </td>
         </tr>
         <tr>

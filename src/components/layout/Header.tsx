@@ -54,12 +54,11 @@ export default function Header({ email, rol }: HeaderProps) {
       >
         {/* Left: logo + nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, background: '#1F1B14', borderRadius: 2, flexShrink: 0 }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#1F1B14', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-              R.M.S Comercio Exterior
-            </span>
-          </div>
+          <img
+            src="/logo-rms.png"
+            alt="RMS Comercio Exterior"
+            style={{ height: 32, width: 'auto', display: 'block' }}
+          />
 
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {[

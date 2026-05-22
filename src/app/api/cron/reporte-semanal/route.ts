@@ -98,8 +98,9 @@ function buildPdfHtml(data: {
   demoradas: Operacion[]
   promedio: number | null
   cutoff: string
+  logoDataUri: string
 }): string {
-  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff } = data
+  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff, logoDataUri } = data
 
   const clientMap = new Map<string, { total: number; liberadas: number; pendientes: number }>()
   for (const op of ops) {
@@ -295,6 +296,7 @@ function buildPdfHtml(data: {
 <div class="page">
   ${pageHeader(todayDisplay)}
   <div class="pc">
+    ${logoDataUri ? `<div style="margin-bottom:20px;"><img src="${logoDataUri}" alt="RMS Comercio Exterior" style="height:80px;width:auto;display:block;" /></div>` : ''}
     <div class="report-title">
       <h1>Reporte Semanal</h1>
       <div class="sub">Semana del ${weekRange}</div>
@@ -461,9 +463,14 @@ async function runReporte(triggeredBy = 'Cron automático'): Promise<NextRespons
     ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
     : null
 
+  const logoDataUri = await fetch('https://rmscomex.vercel.app/logo-rms.png')
+    .then(r => r.arrayBuffer())
+    .then(buf => `data:image/png;base64,${Buffer.from(buf).toString('base64')}`)
+    .catch(() => '')
+
   const html = buildPdfHtml({
     todayIso, todayDisplay, weekRange, weekStartStr,
-    ops, liberadasSemana, pendientes, demoradas, promedio, cutoff,
+    ops, liberadasSemana, pendientes, demoradas, promedio, cutoff, logoDataUri,
   })
 
   const pdfBuffer = await generatePdf(html)

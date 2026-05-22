@@ -13,6 +13,7 @@ const interTight = Inter_Tight({
 export const metadata: Metadata = {
   title: 'Comercio Exterior',
   description: 'Sistema de gestión de operaciones de comercio exterior',
+  icons: { icon: '/logo-rms.png', apple: '/logo-rms.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
