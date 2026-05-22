@@ -102,8 +102,11 @@ async function uploadToDrive(
       body,
     }
   )
-  const data = await res.json() as { id?: string; error?: unknown }
-  console.log('[Drive] respuesta HTTP:', res.status, JSON.stringify(data))
+  const rawText = await res.text()
+  console.log('[Drive] respuesta HTTP:', res.status)
+  console.log('[Drive] error completo:', rawText)
+  if (!res.ok) return null
+  const data = JSON.parse(rawText) as { id?: string }
   return data.id ?? null
 }
 
