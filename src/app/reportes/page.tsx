@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import Header from '@/components/layout/Header'
 import DashboardReportes from '@/components/reportes/DashboardReportes'
+import type { ReporteSemanal } from '@/types/database'
 
 export default async function ReportesPage() {
   const cookieStore = await cookies()
@@ -40,11 +41,21 @@ export default async function ReportesPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
+  const { data: reportesAnteriores } = await adminClient
+    .from('reportes_semanales')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Header email={user.email} rol={userRol} />
       <main style={{ flex: 1, maxWidth: 1536, margin: '0 auto', width: '100%', padding: '24px' }}>
-        <DashboardReportes operaciones={operaciones ?? []} userRol={userRol} />
+        <DashboardReportes
+          operaciones={operaciones ?? []}
+          userRol={userRol}
+          reportesAnteriores={(reportesAnteriores ?? []) as ReporteSemanal[]}
+        />
       </main>
     </div>
   )

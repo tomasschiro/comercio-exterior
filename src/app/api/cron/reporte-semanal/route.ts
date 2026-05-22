@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { createSign } from 'crypto'
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer-core'
 import type { Operacion } from '@/types/database'
@@ -36,78 +35,6 @@ function esc(s: string | number | null | undefined): string {
 function dayBadge(days: number): string {
   const cls = days < 5 ? 'bg' : days <= 10 ? 'by' : 'br'
   return `<span class="badge ${cls}">${days}d</span>`
-}
-
-// ── Google Drive upload ────────────────────────────────────
-
-async function getGoogleAccessToken(clientEmail: string, privateKey: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000)
-  const payload = {
-    iss: clientEmail,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  }
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  const sigInput = `${header}.${body}`
-  const sign = createSign('RSA-SHA256')
-  sign.update(sigInput)
-  const signature = sign.sign(privateKey.replace(/\\n/g, '\n'), 'base64url')
-  const jwt = `${sigInput}.${signature}`
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
-  })
-  const data = await res.json() as { access_token: string }
-  return data.access_token
-}
-
-async function uploadToDrive(
-  accessToken: string,
-  folderId: string,
-  fileName: string,
-  content: Buffer,
-  mimeType: string
-): Promise<string | null> {
-  const boundary = 'rms_reporte_boundary'
-  const metadata = JSON.stringify({ name: fileName, parents: [folderId], mimeType })
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    metadata,
-    `--${boundary}`,
-    `Content-Type: ${mimeType}`,
-    'Content-Transfer-Encoding: base64',
-    '',
-    content.toString('base64'),
-    `--${boundary}--`,
-  ].join('\r\n')
-
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body,
-    }
-  )
-  const rawText = await res.text()
-  console.log('[Drive] respuesta HTTP:', res.status)
-  console.log('[Drive] error completo:', rawText)
-  if (!res.ok) return null
-  const data = JSON.parse(rawText) as { id?: string }
-  return data.id ?? null
 }
 
 // ── Email HTML ─────────────────────────────────────────────
@@ -174,7 +101,6 @@ function buildPdfHtml(data: {
 }): string {
   const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff } = data
 
-  // ── client summary ──────────────────────────────────────
   const clientMap = new Map<string, { total: number; liberadas: number; pendientes: number }>()
   for (const op of ops) {
     const c = op.cliente ?? 'Sin cliente'
@@ -190,7 +116,6 @@ function buildPdfHtml(data: {
       `<tr><td>${esc(c)}</td><td>${s.total}</td><td>${s.liberadas}</td><td>${s.pendientes}</td></tr>`
     ).join('')
 
-  // ── responsible summary ─────────────────────────────────
   const respMap = new Map<string, { total: number; liberadas: number }>()
   for (const op of ops) {
     const r = op.created_by_email ?? 'Sin responsable'
@@ -207,7 +132,6 @@ function buildPdfHtml(data: {
 
   const clientesActivos = new Set(pendientes.map(op => op.cliente ?? 'Sin cliente')).size
 
-  // ── liberadas rows ──────────────────────────────────────
   const libRows = [...liberadasSemana]
     .sort((a, b) => (b.liberacion ?? '').localeCompare(a.liberacion ?? ''))
     .map(op => {
@@ -221,7 +145,6 @@ function buildPdfHtml(data: {
       </tr>`
     }).join('')
 
-  // ── pendientes rows sorted by urgency ───────────────────
   const pendRows = [...pendientes]
     .sort((a, b) => {
       const da = a.recep_doc ? daysBetween(a.recep_doc, todayIso) : -1
@@ -280,7 +203,6 @@ function buildPdfHtml(data: {
   .phdate { font-size: 10px; color: #9CA3AF; }
   .pc { padding: 28px 32px; }
 
-  /* Page 1 */
   .report-title { margin-bottom: 24px; }
   .report-title h1 { font-size: 22px; font-weight: 800; color: #1F1B14; margin-bottom: 4px; }
   .report-title .sub { font-size: 12px; color: #6B7280; }
@@ -325,12 +247,10 @@ function buildPdfHtml(data: {
     border-bottom: 2px solid #E5E7EB;
   }
 
-  /* Pages 2 & 3 */
   .sh { margin-bottom: 20px; }
   .sh h2 { font-size: 19px; font-weight: 800; color: #1F1B14; margin-bottom: 4px; }
   .sh .sub { font-size: 11px; color: #6B7280; }
 
-  /* Tables */
   table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
   th {
     background: #1F1B14;
@@ -354,7 +274,6 @@ function buildPdfHtml(data: {
   }
   tr:nth-child(even) td { background: #F9FAFB; }
 
-  /* Day badges */
   .badge {
     display: inline-block;
     padding: 2px 7px;
@@ -372,7 +291,7 @@ function buildPdfHtml(data: {
 </head>
 <body>
 
-<!-- ═══════════════════ PAGE 1 ═══════════════════ -->
+<!-- PAGE 1 -->
 <div class="page">
   ${pageHeader(todayDisplay)}
   <div class="pc">
@@ -430,7 +349,7 @@ function buildPdfHtml(data: {
   </div>
 </div>
 
-<!-- ═══════════════════ PAGE 2 ═══════════════════ -->
+<!-- PAGE 2 -->
 <div class="page">
   ${pageHeader('Operaciones liberadas esta semana')}
   <div class="pc">
@@ -450,7 +369,7 @@ function buildPdfHtml(data: {
   </div>
 </div>
 
-<!-- ═══════════════════ PAGE 3 ═══════════════════ -->
+<!-- PAGE 3 -->
 <div class="page">
   ${pageHeader('Operaciones pendientes')}
   <div class="pc">
@@ -501,7 +420,7 @@ async function generatePdf(html: string): Promise<Buffer> {
 
 // ── Core report logic ──────────────────────────────────────
 
-async function runReporte(): Promise<NextResponse> {
+async function runReporte(triggeredBy = 'Cron automático'): Promise<NextResponse> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -528,7 +447,7 @@ async function runReporte(): Promise<NextResponse> {
   const todayDisplay = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`
   const weekStartStr = `${pad(sevenDaysAgo.getDate())}/${pad(sevenDaysAgo.getMonth() + 1)}`
   const weekRange = `${weekStartStr} — ${todayDisplay}`
-  const dateStr = todayIso.split('-').reverse().join('-') // DD-MM-YYYY
+  const dateStr = todayIso.split('-').reverse().join('-')
 
   const liberadasSemana = ops.filter(op => op.liberacion && op.liberacion >= cutoff)
   const pendientes = ops.filter(op => !op.liberacion)
@@ -542,61 +461,44 @@ async function runReporte(): Promise<NextResponse> {
     ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
     : null
 
-  // Generate PDF
   const html = buildPdfHtml({
-    todayIso,
-    todayDisplay,
-    weekRange,
-    weekStartStr,
-    ops,
-    liberadasSemana,
-    pendientes,
-    demoradas,
-    promedio,
-    cutoff,
+    todayIso, todayDisplay, weekRange, weekStartStr,
+    ops, liberadasSemana, pendientes, demoradas, promedio, cutoff,
   })
 
   const pdfBuffer = await generatePdf(html)
 
-  // Upload to Google Drive
-  let driveFileId: string | null = null
-  const gKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID
-
-  console.log('[Drive] iniciando upload')
-  console.log('[Drive] credenciales presentes:', !!gKey)
-  console.log('[Drive] folder ID:', folderId ?? '(no configurado)')
-  console.log('[Drive] PDF size bytes:', pdfBuffer.length)
-
-  if (!gKey) console.error('[Drive] GOOGLE_SERVICE_ACCOUNT_KEY no está configurado en las env vars')
-  if (!folderId) console.error('[Drive] GOOGLE_DRIVE_FOLDER_ID no está configurado en las env vars')
-
-  if (gKey && folderId) {
-    try {
-      const creds = JSON.parse(gKey) as { client_email: string; private_key: string }
-      console.log('[Drive] service account email:', creds.client_email)
-      console.log('[Drive] obteniendo access token...')
-      const accessToken = await getGoogleAccessToken(creds.client_email, creds.private_key)
-      console.log('[Drive] access token obtenido, subiendo archivo...')
-      driveFileId = await uploadToDrive(
-        accessToken,
-        folderId,
-        `Reporte_RMS_${dateStr}.pdf`,
-        pdfBuffer,
-        'application/pdf'
-      )
-      console.log('[Drive] archivo subido, file ID:', driveFileId ?? '(null — revisar permisos de carpeta)')
-    } catch (e) {
-      console.error('[Drive] upload failed:', e)
-    }
-  }
-
-  // Get superadmin emails
+  // Get superadmin emails for sending
   const { data: admins } = await admin
     .from('perfiles')
     .select('email')
     .eq('rol', 'superadmin')
   const to = ((admins ?? []) as { email: string }[]).map(a => a.email).filter(Boolean)
+
+  // Upload to Supabase Storage (private bucket)
+  const fileName = `Reporte_RMS_${dateStr}.pdf`
+  let uploadOk = false
+
+  const { error: bucketErr } = await admin.storage.createBucket('reportes', { public: false })
+  if (bucketErr && !bucketErr.message.toLowerCase().includes('already exist')) {
+    console.error('[Storage] bucket create error:', bucketErr.message)
+  }
+
+  const { error: uploadErr } = await admin.storage
+    .from('reportes')
+    .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true })
+
+  if (uploadErr) {
+    console.error('[Storage] upload error:', uploadErr.message)
+  } else {
+    uploadOk = true
+    const { error: insertErr } = await admin.from('reportes_semanales').insert({
+      fecha: todayIso,
+      nombre_archivo: fileName,
+      generado_por: triggeredBy,
+    })
+    if (insertErr) console.error('[Storage] insert error:', insertErr.message)
+  }
 
   // Send email
   let emailSent = false
@@ -608,17 +510,12 @@ async function runReporte(): Promise<NextResponse> {
       to,
       subject: `Reporte semanal RMS — Semana del ${weekStartStr}`,
       html: buildEmailHtml({ weekRange, liberadas: liberadasSemana.length, pendientes: pendientes.length, demoradas: demoradas.length, promedio }),
-      attachments: [
-        {
-          filename: `Reporte_RMS_${dateStr}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
+      attachments: [{ filename: fileName, content: pdfBuffer }],
     })
     emailSent = true
   }
 
-  return NextResponse.json({ success: true, emailSent, driveFileId })
+  return NextResponse.json({ success: true, emailSent, uploadOk, nombreArchivo: fileName })
 }
 
 // ── GET — Vercel cron ──────────────────────────────────────
@@ -629,7 +526,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    return await runReporte()
+    return await runReporte('Cron automático')
   } catch (e: unknown) {
     const err = e instanceof Error ? e : new Error(String(e))
     return NextResponse.json({ error: err.message }, { status: 500 })
@@ -666,7 +563,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    return await runReporte()
+    return await runReporte(user.email ?? 'Superadmin')
   } catch (e: unknown) {
     const err = e instanceof Error ? e : new Error(String(e))
     return NextResponse.json({ error: err.message }, { status: 500 })

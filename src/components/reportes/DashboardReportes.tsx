@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import type { Operacion } from '@/types/database'
+import type { Operacion, ReporteSemanal } from '@/types/database'
 import { getEstadoOperacion } from '@/types/database'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -15,6 +16,7 @@ type TooltipValue = number | string | ReadonlyArray<number | string>
 interface Props {
   operaciones: Operacion[]
   userRol?: string
+  reportesAnteriores?: ReporteSemanal[]
 }
 
 function daysBetween(a: string, b: string): number {
@@ -113,12 +115,14 @@ const ESTADO_COLORS: Record<string, string> = {
 
 // ── Main ──────────────────────────────────────────────────
 
-export default function DashboardReportes({ operaciones, userRol }: Props) {
+export default function DashboardReportes({ operaciones, userRol, reportesAnteriores = [] }: Props) {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
   const [sending, setSending] = useState(false)
   const [sendMsg, setSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [downloading, setDownloading] = useState<number | null>(null)
 
   async function handleEnviarReporte() {
     setSending(true)
@@ -132,12 +136,13 @@ export default function DashboardReportes({ operaciones, userRol }: Props) {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const json = await res.json() as { emailSent?: boolean; driveFileId?: string | null; error?: string }
+      const json = await res.json() as { emailSent?: boolean; uploadOk?: boolean; error?: string }
       if (res.ok) {
-        const parts = ['Reporte enviado']
-        if (json.emailSent) parts.push('por email')
-        if (json.driveFileId) parts.push('y subido a Drive')
+        const parts = ['Reporte generado']
+        if (json.uploadOk) parts.push('y guardado en historial')
+        if (json.emailSent) parts.push('· enviado por email')
         setSendMsg({ ok: true, text: parts.join(' ') })
+        router.refresh()
       } else {
         setSendMsg({ ok: false, text: json.error ?? `Error ${res.status}` })
       }
@@ -145,6 +150,23 @@ export default function DashboardReportes({ operaciones, userRol }: Props) {
       setSendMsg({ ok: false, text: e instanceof Error ? e.message : 'Error desconocido' })
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleDescargar(nombreArchivo: string, idx: number) {
+    setDownloading(idx)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      const res = await fetch(`/api/reportes/descargar?file=${encodeURIComponent(nombreArchivo)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json() as { url?: string; error?: string }
+      if (json.url) window.open(json.url, '_blank')
+    } finally {
+      setDownloading(null)
     }
   }
 
@@ -476,6 +498,65 @@ export default function DashboardReportes({ operaciones, userRol }: Props) {
           )}
         </TableCard>
       </div>
+
+      {/* Historial de reportes */}
+      <TableCard
+        title="Historial de reportes"
+        badge={reportesAnteriores.length > 0 ? (
+          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 100, background: 'var(--surface-2)', color: 'var(--ink-3)' }}>
+            {reportesAnteriores.length} reporte{reportesAnteriores.length !== 1 ? 's' : ''}
+          </span>
+        ) : undefined}
+      >
+        {reportesAnteriores.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--ink-4)', textAlign: 'center', padding: '36px 0' }}>
+            No hay reportes generados aún
+          </p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {['Fecha', 'Archivo', 'Generado por', ''].map(h => (
+                    <th key={h} style={{ ...TH, textAlign: h === '' ? 'right' : 'left' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {reportesAnteriores.map((r, idx) => {
+                  const [y, m, d] = r.fecha.split('-')
+                  const fechaDisplay = `${d}/${m}/${y}`
+                  return (
+                    <tr key={r.id}
+                      style={{ transition: 'background 80ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--row-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ ...TD, fontWeight: 600, color: 'var(--ink-1)', whiteSpace: 'nowrap' }}>{fechaDisplay}</td>
+                      <td style={{ ...TD, color: 'var(--ink-3)', fontFamily: 'monospace', fontSize: 11 }}>{r.nombre_archivo}</td>
+                      <td style={{ ...TD, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.generado_por ?? '—'}</td>
+                      <td style={{ ...TD, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          onClick={() => handleDescargar(r.nombre_archivo, idx)}
+                          disabled={downloading === idx}
+                          style={{
+                            padding: '4px 12px', fontSize: 11, fontWeight: 500,
+                            borderRadius: 5, cursor: downloading === idx ? 'not-allowed' : 'pointer',
+                            background: 'var(--surface-2)', color: 'var(--ink-2)',
+                            border: '1px solid var(--line)', transition: 'background 120ms',
+                          }}
+                        >
+                          {downloading === idx ? 'Generando…' : 'Descargar'}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </TableCard>
     </div>
   )
 }

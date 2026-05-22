@@ -70,3 +70,11 @@ export function getEstadoOperacion(op: Operacion): EstadoOperacion {
 }
 
 export type NuevaOperacion = Omit<Operacion, 'id' | 'created_at' | 'created_by' | 'created_by_email'>
+
+export interface ReporteSemanal {
+  id: number
+  fecha: string
+  nombre_archivo: string
+  generado_por: string | null
+  created_at: string
+}
