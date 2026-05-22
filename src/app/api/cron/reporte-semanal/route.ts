@@ -102,7 +102,8 @@ async function uploadToDrive(
       body,
     }
   )
-  const data = await res.json() as { id?: string }
+  const data = await res.json() as { id?: string; error?: unknown }
+  console.log('[Drive] respuesta HTTP:', res.status, JSON.stringify(data))
   return data.id ?? null
 }
 
@@ -559,10 +560,21 @@ async function runReporte(): Promise<NextResponse> {
   const gKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID
 
+  console.log('[Drive] iniciando upload')
+  console.log('[Drive] credenciales presentes:', !!gKey)
+  console.log('[Drive] folder ID:', folderId ?? '(no configurado)')
+  console.log('[Drive] PDF size bytes:', pdfBuffer.length)
+
+  if (!gKey) console.error('[Drive] GOOGLE_SERVICE_ACCOUNT_KEY no está configurado en las env vars')
+  if (!folderId) console.error('[Drive] GOOGLE_DRIVE_FOLDER_ID no está configurado en las env vars')
+
   if (gKey && folderId) {
     try {
       const creds = JSON.parse(gKey) as { client_email: string; private_key: string }
+      console.log('[Drive] service account email:', creds.client_email)
+      console.log('[Drive] obteniendo access token...')
       const accessToken = await getGoogleAccessToken(creds.client_email, creds.private_key)
+      console.log('[Drive] access token obtenido, subiendo archivo...')
       driveFileId = await uploadToDrive(
         accessToken,
         folderId,
@@ -570,8 +582,9 @@ async function runReporte(): Promise<NextResponse> {
         pdfBuffer,
         'application/pdf'
       )
+      console.log('[Drive] archivo subido, file ID:', driveFileId ?? '(null — revisar permisos de carpeta)')
     } catch (e) {
-      console.error('Google Drive upload failed:', e)
+      console.error('[Drive] upload failed:', e)
     }
   }
 
