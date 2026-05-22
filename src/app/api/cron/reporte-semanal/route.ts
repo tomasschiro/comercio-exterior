@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import * as XLSX from 'xlsx'
 import { createSign } from 'crypto'
+import chromium from '@sparticuz/chromium'
+import puppeteer from 'puppeteer-core'
 import type { Operacion } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,22 @@ function fmtDate(d: string | null): string {
   return `${day}/${m}/${y}`
 }
 
-// ── Google Drive upload via service account JWT ────────────
+function esc(s: string | number | null | undefined): string {
+  if (s === null || s === undefined || s === '') return '—'
+  const str = String(s)
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function dayBadge(days: number): string {
+  const cls = days < 5 ? 'bg' : days <= 10 ? 'by' : 'br'
+  return `<span class="badge ${cls}">${days}d</span>`
+}
+
+// ── Google Drive upload ────────────────────────────────────
 
 async function getGoogleAccessToken(clientEmail: string, privateKey: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
@@ -57,21 +73,18 @@ async function uploadToDrive(
   accessToken: string,
   folderId: string,
   fileName: string,
-  content: Buffer
+  content: Buffer,
+  mimeType: string
 ): Promise<string | null> {
   const boundary = 'rms_reporte_boundary'
-  const metadata = JSON.stringify({
-    name: fileName,
-    parents: [folderId],
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
+  const metadata = JSON.stringify({ name: fileName, parents: [folderId], mimeType })
   const body = [
     `--${boundary}`,
     'Content-Type: application/json; charset=UTF-8',
     '',
     metadata,
     `--${boundary}`,
-    'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    `Content-Type: ${mimeType}`,
     'Content-Transfer-Encoding: base64',
     '',
     content.toString('base64'),
@@ -96,7 +109,7 @@ async function uploadToDrive(
 // ── Email HTML ─────────────────────────────────────────────
 
 function buildEmailHtml(data: {
-  weekStart: string
+  weekRange: string
   liberadas: number
   pendientes: number
   demoradas: number
@@ -112,39 +125,374 @@ function buildEmailHtml(data: {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;padding:40px 20px;">
     <tr><td align="center">
       <table width="580" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:8px;border:1px solid #E5E7EB;overflow:hidden;">
-        <tr>
-          <td style="background:#1F1B14;padding:20px 32px;">
-            <p style="margin:0;font-size:13px;font-weight:600;color:#FFFFFF;letter-spacing:0.04em;">RMS COMERCIO EXTERIOR</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;">
-            <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
-              Resumen semanal — semana del <strong>${data.weekStart}</strong>
-            </p>
-            <div style="margin-bottom:24px;">
-              ${bullet('Liberadas esta semana', data.liberadas)}
-              ${bullet('Pendientes de liberar', data.pendientes)}
-              ${bullet('Demoradas +10 días', data.demoradas)}
-              ${bullet('Promedio días para liberar', data.promedio !== null ? `${data.promedio} días` : '—')}
-            </div>
-            <p style="margin:0;font-size:13px;color:#9CA3AF;font-style:italic;">
-              El reporte completo se adjunta como archivo Excel.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:16px 32px;">
-            <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">
-              Saludos,<br><strong>RMS Comercio Exterior</strong>
-            </p>
-          </td>
-        </tr>
+        <tr><td style="background:#1F1B14;padding:20px 32px;">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#FFFFFF;letter-spacing:0.04em;">RMS COMERCIO EXTERIOR</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+            Resumen semanal — semana del <strong>${data.weekRange}</strong>
+          </p>
+          <div style="margin-bottom:24px;">
+            ${bullet('Liberadas esta semana', data.liberadas)}
+            ${bullet('Pendientes de liberar', data.pendientes)}
+            ${bullet('Demoradas +10 días', data.demoradas)}
+            ${bullet('Promedio días para liberar', data.promedio !== null ? `${data.promedio} días` : '—')}
+          </div>
+          <p style="margin:0;font-size:13px;color:#9CA3AF;font-style:italic;">
+            El reporte completo se adjunta como PDF.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:16px 32px;">
+          <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">
+            Saludos,<br><strong>RMS Comercio Exterior</strong>
+          </p>
+        </td></tr>
       </table>
     </td></tr>
   </table>
 </body>
 </html>`
+}
+
+// ── PDF HTML ───────────────────────────────────────────────
+
+function buildPdfHtml(data: {
+  todayIso: string
+  todayDisplay: string
+  weekRange: string
+  weekStartStr: string
+  ops: Operacion[]
+  liberadasSemana: Operacion[]
+  pendientes: Operacion[]
+  demoradas: Operacion[]
+  promedio: number | null
+  cutoff: string
+}): string {
+  const { todayIso, todayDisplay, weekRange, ops, liberadasSemana, pendientes, demoradas, promedio, cutoff } = data
+
+  // ── client summary ──────────────────────────────────────
+  const clientMap = new Map<string, { total: number; liberadas: number; pendientes: number }>()
+  for (const op of ops) {
+    const c = op.cliente ?? 'Sin cliente'
+    const e = clientMap.get(c) ?? { total: 0, liberadas: 0, pendientes: 0 }
+    e.total++
+    if (op.liberacion && op.liberacion >= cutoff) e.liberadas++
+    if (!op.liberacion) e.pendientes++
+    clientMap.set(c, e)
+  }
+  const clientRows = Array.from(clientMap.entries())
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([c, s]) =>
+      `<tr><td>${esc(c)}</td><td>${s.total}</td><td>${s.liberadas}</td><td>${s.pendientes}</td></tr>`
+    ).join('')
+
+  // ── responsible summary ─────────────────────────────────
+  const respMap = new Map<string, { total: number; liberadas: number }>()
+  for (const op of ops) {
+    const r = op.created_by_email ?? 'Sin responsable'
+    const e = respMap.get(r) ?? { total: 0, liberadas: 0 }
+    e.total++
+    if (op.liberacion && op.liberacion >= cutoff) e.liberadas++
+    respMap.set(r, e)
+  }
+  const respRows = Array.from(respMap.entries())
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([r, s]) =>
+      `<tr><td>${esc(r)}</td><td>${s.total}</td><td>${s.liberadas}</td></tr>`
+    ).join('')
+
+  const clientesActivos = new Set(pendientes.map(op => op.cliente ?? 'Sin cliente')).size
+
+  // ── liberadas rows ──────────────────────────────────────
+  const libRows = [...liberadasSemana]
+    .sort((a, b) => (b.liberacion ?? '').localeCompare(a.liberacion ?? ''))
+    .map(op => {
+      const dias = op.recep_doc && op.liberacion ? daysBetween(op.recep_doc, op.liberacion) : null
+      return `<tr>
+        <td>${esc(op.interno)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
+        <td>${esc(op.crt)}</td><td>${esc(op.transporte)}</td>
+        <td>${fmtDate(op.recep_doc)}</td><td>${fmtDate(op.liberacion)}</td>
+        <td>${dias !== null ? dayBadge(dias) : '—'}</td>
+        <td>${esc(op.created_by_email)}</td>
+      </tr>`
+    }).join('')
+
+  // ── pendientes rows sorted by urgency ───────────────────
+  const pendRows = [...pendientes]
+    .sort((a, b) => {
+      const da = a.recep_doc ? daysBetween(a.recep_doc, todayIso) : -1
+      const db = b.recep_doc ? daysBetween(b.recep_doc, todayIso) : -1
+      return db - da
+    })
+    .map(op => {
+      const dias = op.recep_doc ? daysBetween(op.recep_doc, todayIso) : null
+      return `<tr>
+        <td>${esc(op.interno)}</td><td>${esc(op.cliente)}</td><td>${esc(op.factura)}</td>
+        <td>${esc(op.crt)}</td><td>${esc(op.transporte)}</td>
+        <td>${fmtDate(op.recep_doc)}</td>
+        <td>${dias !== null ? dayBadge(dias) : '—'}</td>
+        <td>${esc(op.created_by_email)}</td>
+      </tr>`
+    }).join('')
+
+  const pageHeader = (sub: string) => `
+    <div class="ph">
+      <span class="brand">RMS COMERCIO EXTERIOR</span>
+      <span class="phdate">${sub}</span>
+    </div>`
+
+  const noData = (cols: number, msg = 'Sin operaciones') =>
+    `<tr><td colspan="${cols}" style="color:#9CA3AF;text-align:center;padding:20px 8px;">${msg}</td></tr>`
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #FAF9F6;
+    color: #374151;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    background: #FAF9F6;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+  .ph {
+    background: #1F1B14;
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.06em; }
+  .phdate { font-size: 10px; color: #9CA3AF; }
+  .pc { padding: 28px 32px; }
+
+  /* Page 1 */
+  .report-title { margin-bottom: 24px; }
+  .report-title h1 { font-size: 22px; font-weight: 800; color: #1F1B14; margin-bottom: 4px; }
+  .report-title .sub { font-size: 12px; color: #6B7280; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+  .kpi .lbl {
+    font-size: 9px;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .kpi .val {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1F1B14;
+    line-height: 1;
+  }
+  .kpi .unit { font-size: 11px; color: #6B7280; font-weight: 400; margin-left: 3px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .sec-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    color: #1F1B14;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #E5E7EB;
+  }
+
+  /* Pages 2 & 3 */
+  .sh { margin-bottom: 20px; }
+  .sh h2 { font-size: 19px; font-weight: 800; color: #1F1B14; margin-bottom: 4px; }
+  .sh .sub { font-size: 11px; color: #6B7280; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
+  th {
+    background: #1F1B14;
+    color: #fff;
+    text-align: left;
+    padding: 7px 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #F3F4F6;
+    color: #374151;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr:nth-child(even) td { background: #F9FAFB; }
+
+  /* Day badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  .bg { background: #D1FAE5; color: #065F46; }
+  .by { background: #FEF3C7; color: #92400E; }
+  .br { background: #FEE2E2; color: #991B1B; }
+
+  .red-val { color: #DC2626; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ PAGE 1 ═══════════════════ -->
+<div class="page">
+  ${pageHeader(todayDisplay)}
+  <div class="pc">
+    <div class="report-title">
+      <h1>Reporte Semanal</h1>
+      <div class="sub">Semana del ${weekRange}</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="lbl">Total en sistema</div>
+        <div class="val">${ops.length}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Liberadas esta semana</div>
+        <div class="val">${liberadasSemana.length}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Pendientes</div>
+        <div class="val">${pendientes.length}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Demoradas +10d</div>
+        <div class="val${demoradas.length > 0 ? ' red-val' : ''}">${demoradas.length}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Promedio días</div>
+        <div class="val">
+          ${promedio !== null ? promedio : '—'}
+          ${promedio !== null ? '<span class="unit">días</span>' : ''}
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Clientes activos</div>
+        <div class="val">${clientesActivos}</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="sec-lbl">Resumen por cliente</div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Ops</th><th>Liberadas</th><th>Pendientes</th></tr></thead>
+          <tbody>${clientRows || noData(4)}</tbody>
+        </table>
+      </div>
+      <div>
+        <div class="sec-lbl">Resumen por responsable</div>
+        <table>
+          <thead><tr><th>Usuario</th><th>A cargo</th><th>Liberadas</th></tr></thead>
+          <tbody>${respRows || noData(3)}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE 2 ═══════════════════ -->
+<div class="page">
+  ${pageHeader('Operaciones liberadas esta semana')}
+  <div class="pc">
+    <div class="sh">
+      <h2>Operaciones liberadas esta semana</h2>
+      <div class="sub">${liberadasSemana.length} operación${liberadasSemana.length !== 1 ? 'es' : ''} — semana del ${weekRange}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Interno</th><th>Cliente</th><th>Factura</th><th>CRT</th>
+          <th>Transporte</th><th>Recep.</th><th>Liberación</th><th>Días</th><th>Responsable</th>
+        </tr>
+      </thead>
+      <tbody>${libRows || noData(9, 'Sin operaciones liberadas esta semana')}</tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE 3 ═══════════════════ -->
+<div class="page">
+  ${pageHeader('Operaciones pendientes')}
+  <div class="pc">
+    <div class="sh">
+      <h2>Operaciones pendientes</h2>
+      <div class="sub">${pendientes.length} operación${pendientes.length !== 1 ? 'es' : ''} — ordenadas por urgencia</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Interno</th><th>Cliente</th><th>Factura</th><th>CRT</th>
+          <th>Transporte</th><th>Recep.</th><th>Días acum.</th><th>Responsable</th>
+        </tr>
+      </thead>
+      <tbody>${pendRows || noData(8, 'Sin operaciones pendientes')}</tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>`
+}
+
+// ── PDF generation ─────────────────────────────────────────
+
+async function generatePdf(html: string): Promise<Buffer> {
+  chromium.setGraphicsMode = false
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  })
+
+  try {
+    const page = await browser.newPage()
+    await page.setContent(html, { waitUntil: 'load' })
+    const raw = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    })
+    return Buffer.isBuffer(raw) ? raw : Buffer.from(raw)
+  } finally {
+    await browser.close()
+  }
 }
 
 // ── Core report logic ──────────────────────────────────────
@@ -165,75 +513,46 @@ async function runReporte(): Promise<NextResponse> {
   }
 
   const ops = (operaciones ?? []) as Operacion[]
-  const today = new Date().toISOString().split('T')[0]
+  const todayIso = new Date().toISOString().split('T')[0]
+
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const cutoff = sevenDaysAgo.toISOString().split('T')[0]
 
+  const now = new Date()
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  const todayDisplay = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`
+  const weekStartStr = `${pad(sevenDaysAgo.getDate())}/${pad(sevenDaysAgo.getMonth() + 1)}`
+  const weekRange = `${weekStartStr} — ${todayDisplay}`
+  const dateStr = todayIso.split('-').reverse().join('-') // DD-MM-YYYY
+
   const liberadasSemana = ops.filter(op => op.liberacion && op.liberacion >= cutoff)
   const pendientes = ops.filter(op => !op.liberacion)
-  const demoradas = pendientes.filter(
-    op => op.recep_doc && daysBetween(op.recep_doc, today) > 10
-  )
+  const demoradas = pendientes.filter(op => op.recep_doc && daysBetween(op.recep_doc, todayIso) > 10)
+
   const diasArr = ops
     .filter(op => op.liberacion && op.recep_doc)
     .map(op => daysBetween(op.recep_doc!, op.liberacion!))
     .filter(d => d >= 0)
-  const promedio =
-    diasArr.length > 0
-      ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
-      : null
+  const promedio = diasArr.length > 0
+    ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length)
+    : null
 
-  // Build Excel
-  const wb = XLSX.utils.book_new()
+  // Generate PDF
+  const html = buildPdfHtml({
+    todayIso,
+    todayDisplay,
+    weekRange,
+    weekStartStr,
+    ops,
+    liberadasSemana,
+    pendientes,
+    demoradas,
+    promedio,
+    cutoff,
+  })
 
-  const wsResumen = XLSX.utils.aoa_to_sheet([
-    ['KPI', 'Valor'],
-    ['Total activas', pendientes.length],
-    ['Liberadas esta semana', liberadasSemana.length],
-    ['Pendientes de liberar', pendientes.length],
-    ['Demoradas +10 días', demoradas.length],
-    ['Promedio días para liberar', promedio ?? '—'],
-  ])
-  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
-
-  const wsLib = XLSX.utils.aoa_to_sheet([
-    ['Interno', 'Cliente', 'Factura', 'CRT', 'Transporte', 'Fecha recep.', 'Fecha liberación', 'Días que tardó', 'Responsable'],
-    ...liberadasSemana.map(op => [
-      op.interno ?? '—',
-      op.cliente ?? '—',
-      op.factura ?? '—',
-      op.crt ?? '—',
-      op.transporte ?? '—',
-      fmtDate(op.recep_doc),
-      fmtDate(op.liberacion),
-      op.recep_doc && op.liberacion ? daysBetween(op.recep_doc, op.liberacion) : '—',
-      op.created_by_email ?? '—',
-    ]),
-  ])
-  XLSX.utils.book_append_sheet(wb, wsLib, 'Liberadas esta semana')
-
-  const wsPend = XLSX.utils.aoa_to_sheet([
-    ['Interno', 'Cliente', 'Factura', 'CRT', 'Transporte', 'Fecha recep.', 'Días acumulados', 'Responsable'],
-    ...pendientes.map(op => [
-      op.interno ?? '—',
-      op.cliente ?? '—',
-      op.factura ?? '—',
-      op.crt ?? '—',
-      op.transporte ?? '—',
-      fmtDate(op.recep_doc),
-      op.recep_doc ? daysBetween(op.recep_doc, today) : '—',
-      op.created_by_email ?? '—',
-    ]),
-  ])
-  XLSX.utils.book_append_sheet(wb, wsPend, 'Pendientes')
-
-  const excelBuf = Buffer.from(
-    XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as Uint8Array
-  )
-
-  const dateStr = today.split('-').reverse().join('-') // DD-MM-YYYY
-  const weekStartStr = `${sevenDaysAgo.getDate().toString().padStart(2, '0')}/${(sevenDaysAgo.getMonth() + 1).toString().padStart(2, '0')}`
+  const pdfBuffer = await generatePdf(html)
 
   // Upload to Google Drive
   let driveFileId: string | null = null
@@ -247,8 +566,9 @@ async function runReporte(): Promise<NextResponse> {
       driveFileId = await uploadToDrive(
         accessToken,
         folderId,
-        `Reporte_RMS_${dateStr}.xlsx`,
-        excelBuf
+        `Reporte_RMS_${dateStr}.pdf`,
+        pdfBuffer,
+        'application/pdf'
       )
     } catch (e) {
       console.error('Google Drive upload failed:', e)
@@ -271,17 +591,11 @@ async function runReporte(): Promise<NextResponse> {
       from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
       to,
       subject: `Reporte semanal RMS — Semana del ${weekStartStr}`,
-      html: buildEmailHtml({
-        weekStart: weekStartStr,
-        liberadas: liberadasSemana.length,
-        pendientes: pendientes.length,
-        demoradas: demoradas.length,
-        promedio,
-      }),
+      html: buildEmailHtml({ weekRange, liberadas: liberadasSemana.length, pendientes: pendientes.length, demoradas: demoradas.length, promedio }),
       attachments: [
         {
-          filename: `Reporte_RMS_${dateStr}.xlsx`,
-          content: excelBuf,
+          filename: `Reporte_RMS_${dateStr}.pdf`,
+          content: pdfBuffer,
         },
       ],
     })
