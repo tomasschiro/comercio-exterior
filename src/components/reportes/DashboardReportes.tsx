@@ -124,6 +124,10 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
   const [sendMsg, setSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [downloading, setDownloading] = useState<number | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
+  const [localReportes, setLocalReportes] = useState<ReporteSemanal[]>(reportesAnteriores)
+  const [deleteReporteConfirm, setDeleteReporteConfirm] = useState<ReporteSemanal | null>(null)
+  const [deletingReporte, setDeletingReporte] = useState(false)
+  const [hoveredReporte, setHoveredReporte] = useState<number | null>(null)
 
   async function handleEnviarReporte() {
     setSending(true)
@@ -165,7 +169,7 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
       const { default: JSZip } = await import('jszip')
       const zip = new JSZip()
 
-      for (const r of reportesAnteriores) {
+      for (const r of localReportes) {
         const res = await fetch(`/api/reportes/descargar?file=${encodeURIComponent(r.nombre_archivo)}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -209,6 +213,27 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
       if (json.url) window.open(json.url, '_blank')
     } finally {
       setDownloading(null)
+    }
+  }
+
+  async function handleEliminarReporte(reporte: ReporteSemanal) {
+    setDeletingReporte(true)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      const res = await fetch('/api/reportes/eliminar', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: reporte.id, nombre_archivo: reporte.nombre_archivo }),
+      })
+      if (res.ok) {
+        setLocalReportes(prev => prev.filter(r => r.id !== reporte.id))
+        setDeleteReporteConfirm(null)
+      }
+    } finally {
+      setDeletingReporte(false)
     }
   }
 
@@ -312,6 +337,7 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
   const tickStyle = { fontSize: 11, fill: 'var(--ink-3)' }
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
       {/* Alert banner */}
@@ -544,9 +570,9 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
       {/* Historial de reportes */}
       <TableCard
         title="Historial de reportes"
-        badge={reportesAnteriores.length > 0 ? (
+        badge={localReportes.length > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {reportesAnteriores.length > 1 && (
+            {localReportes.length > 1 && (
               <button
                 onClick={handleDescargarTodos}
                 disabled={downloadingAll}
@@ -562,12 +588,12 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
               </button>
             )}
             <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 100, background: 'var(--surface-2)', color: 'var(--ink-3)' }}>
-              {reportesAnteriores.length} reporte{reportesAnteriores.length !== 1 ? 's' : ''}
+              {localReportes.length} reporte{localReportes.length !== 1 ? 's' : ''}
             </span>
           </div>
         ) : undefined}
       >
-        {reportesAnteriores.length === 0 ? (
+        {localReportes.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--ink-4)', textAlign: 'center', padding: '36px 0' }}>
             No hay reportes generados aún
           </p>
@@ -582,31 +608,50 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
                 </tr>
               </thead>
               <tbody>
-                {reportesAnteriores.map((r, idx) => {
+                {localReportes.map((r, idx) => {
                   const [y, m, d] = r.fecha.split('-')
                   const fechaDisplay = `${d}/${m}/${y}`
                   return (
                     <tr key={r.id}
                       style={{ transition: 'background 80ms' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--row-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--row-hover)'; setHoveredReporte(r.id) }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; setHoveredReporte(null) }}
                     >
                       <td style={{ ...TD, fontWeight: 600, color: 'var(--ink-1)', whiteSpace: 'nowrap' }}>{fechaDisplay}</td>
                       <td style={{ ...TD, color: 'var(--ink-3)', fontFamily: 'monospace', fontSize: 11 }}>{r.nombre_archivo}</td>
                       <td style={{ ...TD, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.generado_por ?? '—'}</td>
                       <td style={{ ...TD, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button
-                          onClick={() => handleDescargar(r.nombre_archivo, idx)}
-                          disabled={downloading === idx}
-                          style={{
-                            padding: '4px 12px', fontSize: 11, fontWeight: 500,
-                            borderRadius: 5, cursor: downloading === idx ? 'not-allowed' : 'pointer',
-                            background: 'var(--surface-2)', color: 'var(--ink-2)',
-                            border: '1px solid var(--line)', transition: 'background 120ms',
-                          }}
-                        >
-                          {downloading === idx ? 'Generando…' : 'Descargar'}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                          {userRol === 'superadmin' && (
+                            <button
+                              onClick={() => setDeleteReporteConfirm(r)}
+                              title="Eliminar reporte"
+                              style={{
+                                padding: 5, border: 'none', background: 'transparent',
+                                cursor: 'pointer', borderRadius: 4,
+                                color: hoveredReporte === r.id ? 'var(--bad)' : 'transparent',
+                                display: 'flex', alignItems: 'center', transition: 'color 100ms',
+                              }}
+                            >
+                              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDescargar(r.nombre_archivo, idx)}
+                            disabled={downloading === idx}
+                            style={{
+                              padding: '4px 12px', fontSize: 11, fontWeight: 500,
+                              borderRadius: 5, cursor: downloading === idx ? 'not-allowed' : 'pointer',
+                              background: 'var(--surface-2)', color: 'var(--ink-2)',
+                              border: '1px solid var(--line)', transition: 'background 120ms',
+                            }}
+                          >
+                            {downloading === idx ? 'Generando…' : 'Descargar'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -617,5 +662,66 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
         )}
       </TableCard>
     </div>
+
+    {/* Delete reporte confirmation modal */}
+    {deleteReporteConfirm && (
+      <>
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)' }}
+          onClick={() => !deletingReporte && setDeleteReporteConfirm(null)}
+        />
+        <div style={{
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          zIndex: 70, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 12,
+          boxShadow: '0 8px 32px rgba(31,27,20,.18)', padding: '24px 28px', width: 360,
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg style={{ width: 22, height: 22, color: 'var(--bad)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 15, color: 'var(--ink-1)', textAlign: 'center' }}>
+              ¿Eliminar este reporte?
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-3)', textAlign: 'center', lineHeight: 1.5 }}>
+              Esta acción no se puede deshacer.
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-4)', fontFamily: 'monospace', textAlign: 'center', wordBreak: 'break-all' }}>
+              {deleteReporteConfirm.nombre_archivo}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setDeleteReporteConfirm(null)}
+              disabled={deletingReporte}
+              style={{
+                padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6,
+                background: 'var(--surface)', color: 'var(--ink-2)',
+                border: '1px solid var(--line)', cursor: deletingReporte ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => handleEliminarReporte(deleteReporteConfirm)}
+              disabled={deletingReporte}
+              style={{
+                padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6,
+                background: deletingReporte ? 'var(--surface-3)' : 'var(--bad)',
+                color: deletingReporte ? 'var(--ink-3)' : '#FFFFFF',
+                border: 'none', cursor: deletingReporte ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', transition: 'background 120ms',
+              }}
+            >
+              {deletingReporte ? 'Eliminando…' : 'Eliminar'}
+            </button>
+          </div>
+        </div>
+      </>
+    )}
+    </>
   )
 }
