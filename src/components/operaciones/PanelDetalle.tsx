@@ -394,6 +394,35 @@ export default function PanelDetalle({ op, onClose, onSave }: Props) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           {activeTab === 'detalle' ? (
             <>
+              {/* Tipo de operación */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #E8DFC5' }}>
+                <span style={{ fontSize: 12, color: '#7A7158', flexShrink: 0 }}>Tipo de operación</span>
+                <div style={{ display: 'inline-flex', gap: 4 }}>
+                  {(['importacion', 'exportacion'] as const).map(t => {
+                    const active = (localOp.tipo ?? 'importacion') === t
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => { if (!active) setField('tipo', t) }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 12px',
+                          border: `1px solid ${active ? '#1F1B14' : '#E5E0D8'}`,
+                          borderRadius: 20,
+                          background: active ? '#1F1B14' : '#FFFFFF',
+                          fontSize: 12, fontWeight: active ? 500 : 400,
+                          color: active ? '#FFFFFF' : '#4A4332',
+                          cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                          transition: 'background 80ms, border-color 80ms, color 80ms',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {t === 'importacion' ? 'Importación' : 'Exportación'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               {/* Próximo paso banner */}
               {proximoPaso && !localOp.liberacion && (
                 <div style={{ background: '#EDF1FF', border: '1px solid #C7D4FB', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>

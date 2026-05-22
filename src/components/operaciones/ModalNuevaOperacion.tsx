@@ -17,6 +17,7 @@ function today(): string {
 
 function getEmpty(): NuevaOperacion {
   return {
+    tipo: 'importacion',
     interno: null, recep_doc: today(), cliente: null, transporte: null,
     factura: null, oc: null, fecha_pedido_fondos: null, crt: null,
     senasa: null, senasa_estado: null, senasa_vinculacion: null,
@@ -285,6 +286,36 @@ export default function ModalNuevaOperacion({ open, onClose, onCreated, userEmai
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ padding: 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px' }}>
+
+              {/* Tipo de operación */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Tipo de operación</label>
+                <div style={{ display: 'inline-flex', gap: 4 }}>
+                  {(['importacion', 'exportacion'] as const).map(t => {
+                    const active = (form.tipo ?? 'importacion') === t
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, tipo: t }))}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 14px',
+                          border: `1px solid ${active ? '#1F1B14' : '#E5E0D8'}`,
+                          borderRadius: 20,
+                          background: active ? '#1F1B14' : '#FFFFFF',
+                          fontSize: 13, fontWeight: active ? 500 : 400,
+                          color: active ? '#FFFFFF' : '#4A4332',
+                          cursor: 'pointer', whiteSpace: 'nowrap',
+                          transition: 'background 80ms, border-color 80ms, color 80ms',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {t === 'importacion' ? 'Importación' : 'Exportación'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
               {/* Interno */}
               <div>

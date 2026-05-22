@@ -151,6 +151,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const [innerTab, setInnerTab] = useState<InnerTab>('mis')
   const [chipAtrasadas, setChipAtrasadas] = useState(false)
   const [chipRetenidas, setChipRetenidas] = useState(false)
+  const [chipImportacion, setChipImportacion] = useState(false)
+  const [chipExportacion, setChipExportacion] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [panelOp, setPanelOp] = useState<Operacion | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -355,6 +357,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     setOperaciones(prev => prev.map(op => op.id === updated.id ? updated : op))
     setPanelOp(updated)
     const error = await updateOperacion(updated.id, {
+      tipo: updated.tipo,
       interno: updated.interno, recep_doc: updated.recep_doc, cliente: updated.cliente,
       transporte: updated.transporte, factura: updated.factura, oc: updated.oc,
       fecha_pedido_fondos: updated.fecha_pedido_fondos, crt: updated.crt,
@@ -409,6 +412,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     if (innerTab === 'mis' && userId && op.created_by !== userId) return false
     if (chipAtrasadas && !isAtrasada(op)) return false
     if (chipRetenidas && op.senasa_estado !== 'retenida') return false
+    if (chipImportacion && (op.tipo ?? 'importacion') !== 'importacion') return false
+    if (chipExportacion && op.tipo !== 'exportacion') return false
     if (busqueda) {
       const q = busqueda.toLowerCase()
       if (!(
@@ -429,6 +434,8 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const misCount = userId ? base.filter(op => op.created_by === userId).length : 0
   const atrasadasCount = base.filter(isAtrasada).length
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
+  const importacionCount = base.filter(op => (op.tipo ?? 'importacion') === 'importacion').length
+  const exportacionCount = base.filter(op => op.tipo === 'exportacion').length
   const sorted = [...filtradas].sort((a, b) => {
     if (sortKey === 'antigua')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     if (sortKey === 'cliente')  return (a.cliente ?? '').localeCompare(b.cliente ?? '', 'es')
@@ -884,6 +891,16 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
               </button>
             </>
           )}
+
+          <div className="toolbar-sep" />
+          <button onClick={() => setChipImportacion(v => !v)} className={`chip${chipImportacion ? ' active' : ''}`}>
+            Importación
+            <span className="chip-count">{importacionCount}</span>
+          </button>
+          <button onClick={() => setChipExportacion(v => !v)} className={`chip${chipExportacion ? ' active' : ''}`}>
+            Exportación
+            <span className="chip-count">{exportacionCount}</span>
+          </button>
 
           <div className="toolbar-sep" />
 

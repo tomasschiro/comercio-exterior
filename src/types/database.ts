@@ -30,6 +30,7 @@ export interface Transporte {
 
 export interface Operacion {
   id: number
+  tipo: string | null
   interno: number | null
   recep_doc: string | null
   cliente: string | null
