@@ -123,6 +123,7 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
   const [sending, setSending] = useState(false)
   const [sendMsg, setSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [downloading, setDownloading] = useState<number | null>(null)
+  const [downloadingAll, setDownloadingAll] = useState(false)
 
   async function handleEnviarReporte() {
     setSending(true)
@@ -150,6 +151,47 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
       setSendMsg({ ok: false, text: e instanceof Error ? e.message : 'Error desconocido' })
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleDescargarTodos() {
+    setDownloadingAll(true)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const { default: JSZip } = await import('jszip')
+      const zip = new JSZip()
+
+      for (const r of reportesAnteriores) {
+        const res = await fetch(`/api/reportes/descargar?file=${encodeURIComponent(r.nombre_archivo)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const json = await res.json() as { url?: string; error?: string }
+        if (json.url) {
+          const pdfRes = await fetch(json.url)
+          const blob = await pdfRes.blob()
+          zip.file(r.nombre_archivo, blob)
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const now = new Date()
+      const dd = String(now.getDate()).padStart(2, '0')
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const yyyy = now.getFullYear()
+      const zipName = `Reportes_RMS_${dd}-${mm}-${yyyy}.zip`
+
+      const objectUrl = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = zipName
+      a.click()
+      URL.revokeObjectURL(objectUrl)
+    } finally {
+      setDownloadingAll(false)
     }
   }
 
@@ -503,9 +545,26 @@ export default function DashboardReportes({ operaciones, userRol, reportesAnteri
       <TableCard
         title="Historial de reportes"
         badge={reportesAnteriores.length > 0 ? (
-          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 100, background: 'var(--surface-2)', color: 'var(--ink-3)' }}>
-            {reportesAnteriores.length} reporte{reportesAnteriores.length !== 1 ? 's' : ''}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {reportesAnteriores.length > 1 && (
+              <button
+                onClick={handleDescargarTodos}
+                disabled={downloadingAll}
+                style={{
+                  padding: '4px 12px', fontSize: 11, fontWeight: 500,
+                  borderRadius: 5, cursor: downloadingAll ? 'not-allowed' : 'pointer',
+                  background: downloadingAll ? 'var(--surface-3)' : 'var(--ink-1)',
+                  color: downloadingAll ? 'var(--ink-3)' : '#FFFFFF',
+                  border: 'none', transition: 'background 120ms', whiteSpace: 'nowrap',
+                }}
+              >
+                {downloadingAll ? 'Descargando…' : 'Descargar todos'}
+              </button>
+            )}
+            <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 100, background: 'var(--surface-2)', color: 'var(--ink-3)' }}>
+              {reportesAnteriores.length} reporte{reportesAnteriores.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         ) : undefined}
       >
         {reportesAnteriores.length === 0 ? (
