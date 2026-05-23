@@ -180,6 +180,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const [deleting, setDeleting] = useState(false)
   const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null } | null>(null)
   const [sendingMail, setSendingMail] = useState(false)
+  const [workspace, setWorkspace] = useState<'importacion' | 'exportacion' | 'todas'>('todas')
 
   const cargarOperaciones = useCallback(async () => {
     setLoading(true)
@@ -252,7 +253,36 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     return () => document.removeEventListener('mousedown', handler)
   }, [moreOpen])
 
-  useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda, filterDesde, filterHasta])
+  useEffect(() => { setPage(1) }, [section, innerTab, chipAtrasadas, chipRetenidas, busqueda, filterDesde, filterHasta, workspace])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('rms.workspace')
+    if (saved === 'importacion' || saved === 'exportacion' || saved === 'todas') setWorkspace(saved)
+  }, [])
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const ws = (e as CustomEvent<{ workspace: 'importacion' | 'exportacion' | 'todas' }>).detail.workspace
+      setWorkspace(ws)
+    }
+    window.addEventListener('workspace-change', handler)
+    return () => window.removeEventListener('workspace-change', handler)
+  }, [])
+
+  useEffect(() => {
+    const allP = operaciones.filter(op => !op.liberacion)
+    window.dispatchEvent(new CustomEvent('operaciones-counts', {
+      detail: {
+        impoTotal: operaciones.filter(op => (op.tipo ?? 'importacion') === 'importacion').length,
+        impoP:     operaciones.filter(op => (op.tipo ?? 'importacion') === 'importacion' && !op.liberacion).length,
+        expoTotal: operaciones.filter(op => op.tipo === 'exportacion').length,
+        expoP:     operaciones.filter(op => op.tipo === 'exportacion' && !op.liberacion).length,
+        total:     operaciones.length,
+        atrasadas: allP.filter(isAtrasada).length,
+        retenidas: allP.filter(op => op.senasa_estado === 'retenida').length,
+      }
+    }))
+  }, [operaciones])
 
 
   function setCellStatus(id: number, field: string, status: CellStatus | null) {
@@ -403,9 +433,12 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     setDeleteConfirm(null)
   }
 
-  const pendientes = operaciones.filter(op => !op.liberacion)
+  const workspaceOps = workspace === 'todas'
+    ? operaciones
+    : operaciones.filter(op => (op.tipo ?? 'importacion') === workspace)
+  const pendientes = workspaceOps.filter(op => !op.liberacion)
   const liberadasCutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })()
-  const liberadas = operaciones.filter(op => !!op.liberacion && op.liberacion >= liberadasCutoff)
+  const liberadas = workspaceOps.filter(op => !!op.liberacion && op.liberacion >= liberadasCutoff)
   const base = section === 'pendientes' ? pendientes : liberadas
 
   const filtradas = base.filter(op => {
