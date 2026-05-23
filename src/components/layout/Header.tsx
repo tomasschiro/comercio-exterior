@@ -106,9 +106,9 @@ export default function Header({ email, rol }: HeaderProps) {
   const borderWidth = isOnOperaciones ? 2 : 1
 
   const OPTIONS = [
-    { key: 'importacion' as Workspace, label: 'Importación',        total: counts.impoTotal, pend: counts.impoP,  color: '#1E40AF', activeBg: '#EFF6FF' },
-    { key: 'exportacion' as Workspace, label: 'Exportación',        total: counts.expoTotal, pend: counts.expoP,  color: '#9A3412', activeBg: '#FFF7F5' },
-    { key: 'todas'       as Workspace, label: 'Todas las operaciones', total: counts.total,  pend: null,           color: '#1F1B14', activeBg: '#F5F1EB' },
+    { key: 'importacion' as Workspace, label: 'Importación',          total: counts.impoTotal, pend: counts.impoP, color: '#1E40AF', activeBg: '#EFF6FF', iconBg: '#EDF1FF', iconColor: '#1E40AF', shortcut: '1' },
+    { key: 'exportacion' as Workspace, label: 'Exportación',          total: counts.expoTotal, pend: counts.expoP, color: '#9A3412', activeBg: '#FFF7F5', iconBg: '#FDE6CB', iconColor: '#9A3412', shortcut: '2' },
+    { key: 'todas'       as Workspace, label: 'Todas las operaciones', total: counts.total,     pend: null,         color: '#1F1B14', activeBg: '#F5F1EB', iconBg: '#EEECE8', iconColor: '#6B6755', shortcut: '3' },
   ]
 
   return (
@@ -165,7 +165,21 @@ export default function Header({ email, rol }: HeaderProps) {
                 onMouseEnter={e => { e.currentTarget.style.background = '#F5F1EB' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF' }}
               >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: wsColor, flexShrink: 0 }} />
+                {workspace === 'importacion' && (
+                  <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v13m0 0l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                )}
+                {workspace === 'exportacion' && (
+                  <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 20V7m0 0l-4 4m4-4l4 4M4 4h16" />
+                  </svg>
+                )}
+                {workspace === 'todas' && (
+                  <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+                  </svg>
+                )}
                 {WS_LABEL[workspace]}
                 <svg style={{ width: 10, height: 10, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={dropdownOpen ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
@@ -175,16 +189,19 @@ export default function Header({ email, rol }: HeaderProps) {
               {dropdownOpen && (
                 <div style={{
                   position: 'absolute',
-                  top: 'calc(100% + 6px)',
+                  top: 'calc(100% + 8px)',
                   left: 0,
                   zIndex: 50,
                   background: '#FFFFFF',
                   border: '1px solid #E8DFC5',
-                  borderRadius: 10,
-                  boxShadow: '0 4px 20px rgba(31,27,20,.12)',
-                  padding: 6,
-                  minWidth: 230,
+                  borderRadius: 12,
+                  boxShadow: '0 8px 28px rgba(31,27,20,.15)',
+                  padding: '8px 0 6px',
+                  minWidth: 272,
                 }}>
+                  <div style={{ padding: '2px 14px 8px', fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', color: '#ADA482', textTransform: 'uppercase' }}>
+                    Contexto de trabajo
+                  </div>
                   {OPTIONS.map(opt => (
                     <button
                       key={opt.key}
@@ -193,40 +210,49 @@ export default function Header({ email, rol }: HeaderProps) {
                         display: 'flex',
                         alignItems: 'center',
                         width: '100%',
-                        padding: '8px 10px',
-                        gap: 8,
-                        fontSize: 13,
-                        borderRadius: 6,
+                        padding: '7px 12px',
+                        gap: 10,
                         border: 'none',
                         cursor: 'pointer',
                         textAlign: 'left',
                         background: workspace === opt.key ? opt.activeBg : 'transparent',
                         color: '#1F1B14',
-                        fontWeight: workspace === opt.key ? 600 : 400,
                         transition: 'background 80ms',
                         fontFamily: 'inherit',
                       }}
                       onMouseEnter={e => { if (workspace !== opt.key) e.currentTarget.style.background = '#F5F1EB' }}
                       onMouseLeave={e => { if (workspace !== opt.key) e.currentTarget.style.background = 'transparent' }}
                     >
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>{opt.label}</span>
-                      <span style={{ fontSize: 11, color: '#7A7158', display: 'flex', gap: 4, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                        {opt.total}
-                        {opt.pend !== null && <span style={{ color: '#ADA482' }}>· {opt.pend} pend.</span>}
-                      </span>
+                      <div style={{ width: 32, height: 32, background: opt.iconBg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {opt.key === 'importacion' && (
+                          <svg width="15" height="15" fill="none" stroke={opt.iconColor} strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v13m0 0l-4-4m4 4l4-4M4 20h16" />
+                          </svg>
+                        )}
+                        {opt.key === 'exportacion' && (
+                          <svg width="15" height="15" fill="none" stroke={opt.iconColor} strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 20V7m0 0l-4 4m4-4l4 4M4 4h16" />
+                          </svg>
+                        )}
+                        {opt.key === 'todas' && (
+                          <svg width="15" height="15" fill={opt.iconColor} viewBox="0 0 24 24">
+                            <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1F1B14', lineHeight: 1.3 }}>{opt.label}</div>
+                        <div style={{ fontSize: 11, color: '#7A7158', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>
+                          {opt.total} op{opt.total !== 1 ? 's.' : '.'}
+                          {opt.pend !== null && <span style={{ color: '#ADA482' }}> · {opt.pend} pend.</span>}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 10, color: '#ADA482', flexShrink: 0 }}>Ctrl {opt.shortcut}</span>
                     </button>
                   ))}
-
-                  <div style={{ height: 1, background: '#E8DFC5', margin: '4px 0' }} />
-                  <div style={{ padding: '4px 10px 2px', display: 'flex', gap: 10 }}>
-                    {[
-                      { label: 'Ctrl 1 Impo' },
-                      { label: 'Ctrl 2 Expo' },
-                      { label: 'Ctrl 3 Todas' },
-                    ].map(k => (
-                      <span key={k.label} style={{ fontSize: 10, color: '#ADA482' }}>{k.label}</span>
-                    ))}
+                  <div style={{ height: 1, background: '#E8DFC5', margin: '6px 0 4px' }} />
+                  <div style={{ padding: '0 14px 4px', fontSize: 11, color: '#B8AD95', fontStyle: 'italic' }}>
+                    Tu última selección se recuerda al reabrir la app.
                   </div>
                 </div>
               )}

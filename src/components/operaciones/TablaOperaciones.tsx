@@ -469,8 +469,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const retenidasCount = base.filter(op => op.senasa_estado === 'retenida').length
   const importacionCount = base.filter(op => (op.tipo ?? 'importacion') === 'importacion').length
   const exportacionCount = base.filter(op => op.tipo === 'exportacion').length
-  const hasBothTypes = filtradas.some(op => (op.tipo ?? 'importacion') === 'importacion') && filtradas.some(op => op.tipo === 'exportacion')
-  const sorted = [...filtradas].sort((a, b) => {
+const sorted = [...filtradas].sort((a, b) => {
     if (sortKey === 'antigua')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     if (sortKey === 'cliente')  return (a.cliente ?? '').localeCompare(b.cliente ?? '', 'es')
     if (sortKey === 'interno')  return (b.interno ?? 0) - (a.interno ?? 0)
@@ -1196,7 +1195,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                         {/* Stripe — 3px inset shadow on left for atrasada rows */}
                         <td className="col-stripe" style={atrasada ? { boxShadow: 'inset 3px 0 0 #991B1B' } : undefined} />
 
-                        {/* Interno — red if atrasada, blue otherwise */}
+                        {/* Interno — red if atrasada, rust if expo, blue if impo */}
                         <td style={{ padding: '0 6px 0 8px', overflow: 'hidden', verticalAlign: 'middle' }} className="st-interno">
                           <div
                             className="interno-link"
@@ -1204,30 +1203,18 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
                             style={{
                               fontSize: 14,
                               fontWeight: 700,
-                              color: atrasada ? '#991B1B' : '#2563EB',
-                              lineHeight: 1.2,
+                              color: atrasada ? '#991B1B' : op.tipo === 'exportacion' ? '#9A3412' : '#2563EB',
+                              lineHeight: 1,
                               display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 5,
                             }}
                           >
-                            {op.interno ?? '—'}
-                            {hasBothTypes && (
-                              <span style={{
-                                fontSize: 10,
-                                fontWeight: 600,
-                                letterSpacing: '0.05em',
-                                color: (op.tipo ?? 'importacion') === 'importacion' ? '#1D4ED8' : '#15803D',
-                                background: (op.tipo ?? 'importacion') === 'importacion' ? '#EFF6FF' : '#DCFCE7',
-                                borderRadius: 4,
-                                padding: '2px 6px',
-                                lineHeight: 1,
-                                marginTop: 2,
-                                display: 'inline-block',
-                              }}>
-                                {(op.tipo ?? 'importacion') === 'importacion' ? 'IMPO' : 'EXPO'}
-                              </span>
+                            {op.tipo === 'exportacion' && !atrasada && (
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9A3412', flexShrink: 0, display: 'inline-block' }} />
                             )}
+                            {op.interno ?? '—'}
                           </div>
                         </td>
 
