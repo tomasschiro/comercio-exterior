@@ -15,6 +15,7 @@ export interface Cliente {
   id: number
   nombre: string
   email: string | null
+  emails_adicionales: string[] | null
   telefono: string | null
   activo: boolean
   created_at: string

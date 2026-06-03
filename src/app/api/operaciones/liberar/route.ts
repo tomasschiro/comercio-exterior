@@ -115,11 +115,12 @@ export async function POST(req: NextRequest) {
     if (op.liberacion && op.cliente) {
       const { data: clientData } = await admin
         .from('clientes')
-        .select('email')
+        .select('email, emails_adicionales')
         .ilike('nombre', op.cliente)
         .maybeSingle()
 
       const clientEmail = clientData?.email ?? null
+      const clientEmailsAd: string[] = clientData?.emails_adicionales ?? []
 
       const resendKey = process.env.RESEND_API_KEY
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
         const validCc = (ccEmails as string[]).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 2)
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
-          to: [clientEmail, ...validCc],
+          to: [clientEmail, ...clientEmailsAd, ...validCc],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
           html: buildEmailHtml({ interno: op.interno, liberacion: op.liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho, tipo: op.tipo }),
         })

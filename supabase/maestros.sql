@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS transportes (
 -- Agregar columna transporte a operaciones (si no existe)
 ALTER TABLE operaciones ADD COLUMN IF NOT EXISTS transporte TEXT;
 
+-- Add emails_adicionales array column to clientes
+ALTER TABLE public.clientes ADD COLUMN IF NOT EXISTS emails_adicionales text[];
+
 -- RLS clientes
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 

@@ -76,6 +76,10 @@ async function apiFetch(path: string, method: string, body?: object) {
   return data
 }
 
+function isValidEmailAddr(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}
+
 // ── icon helpers ──────────────────────────────────────────
 
 function IconPlus() {
@@ -112,14 +116,31 @@ function IconX() {
 
 // ── Modals ────────────────────────────────────────────────
 
-function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
+function ModalCliente({ initial, onSave, onClose, zIndex = 50 }: {
+  initial?: Cliente
   onSave: (c: Cliente) => void
   onClose: () => void
   zIndex?: number
 }) {
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '' })
+  const [form, setForm] = useState({
+    nombre: initial?.nombre ?? '',
+    email: initial?.email ?? '',
+    telefono: initial?.telefono ?? '',
+  })
+  const [emailsAd, setEmailsAd] = useState<string[]>(initial?.emails_adicionales ?? [])
+  const [emailAdInput, setEmailAdInput] = useState('')
+  const [emailAdError, setEmailAdError] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  function addEmailAd() {
+    const trimmed = emailAdInput.trim()
+    if (!isValidEmailAddr(trimmed)) { setEmailAdError('Email inválido'); return }
+    if (emailsAd.includes(trimmed)) { setEmailAdError('Ya fue agregado'); return }
+    setEmailsAd(prev => [...prev, trimmed])
+    setEmailAdInput('')
+    setEmailAdError('')
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -127,12 +148,19 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
     setLoading(true)
     setError('')
     try {
-      const data = await apiFetch('/api/maestros/clientes', 'POST', {
+      const payload = {
         nombre: form.nombre.trim(),
         email: form.email.trim() || null,
         telefono: form.telefono.trim() || null,
-      })
-      onSave(data)
+        emails_adicionales: emailsAd.length > 0 ? emailsAd : null,
+      }
+      if (initial) {
+        await apiFetch('/api/maestros/clientes', 'PUT', { id: initial.id, ...payload })
+        onSave({ ...initial, ...payload })
+      } else {
+        const data = await apiFetch('/api/maestros/clientes', 'POST', payload)
+        onSave(data)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
       setLoading(false)
@@ -145,9 +173,9 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(15,17,21,.22)', backdropFilter: 'blur(2px)', padding: 16,
     }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line)', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-lg)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line)', width: '100%', maxWidth: 400, boxShadow: 'var(--shadow-lg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--line)' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>Nuevo cliente</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>{initial ? 'Editar cliente' : 'Nuevo cliente'}</span>
           <button onClick={onClose} style={{ ...BTN_SECONDARY, padding: '0', width: 26, height: 26, border: 'none', background: 'transparent', color: 'var(--ink-3)' }}>
             <IconX />
           </button>
@@ -157,7 +185,7 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
             <input type="text" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
               style={INPUT} placeholder="Nombre del cliente" autoFocus required />
           </FieldRow>
-          <FieldRow label="Email">
+          <FieldRow label="Email principal">
             <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
               style={INPUT} placeholder="email@ejemplo.com" />
           </FieldRow>
@@ -165,6 +193,42 @@ function ModalNuevoCliente({ onSave, onClose, zIndex = 50 }: {
             <input type="text" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
               style={INPUT} placeholder="+54 9 ..." />
           </FieldRow>
+
+          <FieldRow label="Emails adicionales">
+            <div>
+              {emailsAd.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {emailsAd.map(email => (
+                    <div key={email} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '3px 6px 3px 10px', fontSize: 12, color: '#1E40AF' }}>
+                      <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>
+                      <button type="button" onClick={() => setEmailsAd(prev => prev.filter(e => e !== email))}
+                        style={{ width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(30,64,175,0.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0, color: '#1E40AF', fontSize: 14, lineHeight: 1, fontFamily: 'inherit' }}>
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {emailsAd.length < 2 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="email" value={emailAdInput}
+                    onChange={e => { setEmailAdInput(e.target.value); setEmailAdError('') }}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmailAd() } }}
+                    placeholder="email@ejemplo.com"
+                    style={{ ...INPUT, border: `1px solid ${emailAdError ? '#EF4444' : 'var(--line)'}` }} />
+                  <button type="button" onClick={addEmailAd} disabled={!emailAdInput.trim()}
+                    style={{ width: 34, height: 29, borderRadius: 'var(--radius)', border: '1px solid var(--line)', background: 'var(--surface)', cursor: !emailAdInput.trim() ? 'default' : 'pointer', color: !emailAdInput.trim() ? 'var(--ink-4)' : 'var(--ink-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20, lineHeight: 1, fontFamily: 'inherit' }}>
+                    +
+                  </button>
+                </div>
+              )}
+              {emailAdError && <div style={{ marginTop: 5, fontSize: 11, color: '#EF4444' }}>{emailAdError}</div>}
+              {emailsAd.length === 2 && (
+                <div style={{ marginTop: 5, fontSize: 11, color: 'var(--ink-4)' }}>Máximo 2 emails adicionales</div>
+              )}
+            </div>
+          </FieldRow>
+
           {error && <p style={{ fontSize: 12, color: 'var(--bad)', margin: 0 }}>{error}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
             <button type="button" onClick={onClose} style={BTN_SECONDARY}>Cancelar</button>
@@ -252,33 +316,9 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; isSuperadmin: boolean }) {
   const [clientes, setClientes] = useState(init)
-  const [editId, setEditId] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState({ nombre: '', email: '', telefono: '' })
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
   const [showNuevo, setShowNuevo] = useState(false)
   const [loadingId, setLoadingId] = useState<number | null>(null)
-
-  function startEdit(c: Cliente) {
-    setEditId(c.id)
-    setEditForm({ nombre: c.nombre, email: c.email ?? '', telefono: c.telefono ?? '' })
-  }
-
-  async function saveEdit() {
-    if (!editId) return
-    setLoadingId(editId)
-    const updates = {
-      nombre: editForm.nombre.trim(),
-      email: editForm.email.trim() || null,
-      telefono: editForm.telefono.trim() || null,
-    }
-    try {
-      await apiFetch('/api/maestros/clientes', 'PUT', { id: editId, ...updates })
-      setClientes(prev => prev.map(c => c.id === editId ? { ...c, ...updates } : c))
-      setEditId(null)
-    } catch {
-      // keep edit open
-    }
-    setLoadingId(null)
-  }
 
   async function toggleActivo(c: Cliente, e: React.MouseEvent) {
     e.stopPropagation()
@@ -297,7 +337,7 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
     try {
       await apiFetch('/api/maestros/clientes', 'DELETE', { id })
       setClientes(prev => prev.filter(c => c.id !== id))
-      if (editId === id) setEditId(null)
+      if (editingCliente?.id === id) setEditingCliente(null)
     } catch { /**/ }
     setLoadingId(null)
   }
@@ -346,47 +386,35 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
             </thead>
             <tbody>
               {clientes.map(c => {
-                const isEditing = editId === c.id
                 const isLoading = loadingId === c.id
                 return (
                   <tr
                     key={c.id}
-                    onClick={() => isSuperadmin && !isEditing && startEdit(c)}
+                    onClick={() => isSuperadmin && setEditingCliente(c)}
                     style={{
                       borderTop: '1px solid var(--line)',
-                      cursor: isSuperadmin && !isEditing ? 'pointer' : 'default',
-                      background: isEditing ? 'var(--accent-soft)' : 'var(--surface)',
+                      cursor: isSuperadmin ? 'pointer' : 'default',
+                      background: 'var(--surface)',
                       transition: 'background 80ms',
                     }}
-                    onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = 'var(--row-hover)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isEditing ? 'var(--accent-soft)' : 'var(--surface)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--row-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)' }}
                   >
                     <td style={{ padding: '8px 16px', minWidth: 160 }}>
-                      {isEditing ? (
-                        <input type="text" value={editForm.nombre}
-                          onChange={e => setEditForm(p => ({ ...p, nombre: e.target.value }))}
-                          onClick={e => e.stopPropagation()} style={INPUT} autoFocus />
-                      ) : (
-                        <span style={{ fontWeight: 500, color: 'var(--ink-1)' }}>{c.nombre}</span>
-                      )}
+                      <span style={{ fontWeight: 500, color: 'var(--ink-1)' }}>{c.nombre}</span>
                     </td>
                     <td style={{ padding: '8px 16px' }}>
-                      {isEditing ? (
-                        <input type="email" value={editForm.email}
-                          onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                          onClick={e => e.stopPropagation()} style={INPUT} placeholder="—" />
-                      ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <span style={{ color: 'var(--ink-2)' }}>{c.email ?? '—'}</span>
-                      )}
+                        {c.emails_adicionales && c.emails_adicionales.length > 0 && (
+                          <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>
+                            +{c.emails_adicionales.length} adicional{c.emails_adicionales.length !== 1 ? 'es' : ''}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '8px 16px' }}>
-                      {isEditing ? (
-                        <input type="text" value={editForm.telefono}
-                          onChange={e => setEditForm(p => ({ ...p, telefono: e.target.value }))}
-                          onClick={e => e.stopPropagation()} style={INPUT} placeholder="—" />
-                      ) : (
-                        <span style={{ color: 'var(--ink-2)' }}>{c.telefono ?? '—'}</span>
-                      )}
+                      <span style={{ color: 'var(--ink-2)' }}>{c.telefono ?? '—'}</span>
                     </td>
                     <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
                       <button
@@ -406,24 +434,14 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
                     </td>
                     {isSuperadmin && (
                       <td style={{ padding: '8px 16px' }} onClick={e => e.stopPropagation()}>
-                        {isEditing ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <button onClick={saveEdit} disabled={isLoading || !editForm.nombre.trim()}
-                              style={{ ...BTN_OK, opacity: isLoading || !editForm.nombre.trim() ? 0.5 : 1 }}>
-                              {isLoading ? '...' : 'Guardar'}
-                            </button>
-                            <button onClick={() => setEditId(null)} style={BTN_SECONDARY}>Cancelar</button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <IconBtn onClick={e => { e.stopPropagation(); startEdit(c) }} title="Editar">
-                              <IconEdit />
-                            </IconBtn>
-                            <IconBtn onClick={e => deleteCliente(c.id, e)} title="Eliminar" danger disabled={isLoading}>
-                              <IconTrash />
-                            </IconBtn>
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <IconBtn onClick={e => { e.stopPropagation(); setEditingCliente(c) }} title="Editar">
+                            <IconEdit />
+                          </IconBtn>
+                          <IconBtn onClick={e => deleteCliente(c.id, e)} title="Eliminar" danger disabled={isLoading}>
+                            <IconTrash />
+                          </IconBtn>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -434,10 +452,19 @@ function TablaClientes({ clientes: init, isSuperadmin }: { clientes: Cliente[]; 
         </div>
       )}
 
-      {showNuevo && (
-        <ModalNuevoCliente
-          onSave={c => { setClientes(prev => [...prev, c].sort((a, b) => a.nombre.localeCompare(b.nombre))); setShowNuevo(false) }}
-          onClose={() => setShowNuevo(false)}
+      {(showNuevo || editingCliente) && (
+        <ModalCliente
+          initial={editingCliente ?? undefined}
+          onSave={c => {
+            if (editingCliente) {
+              setClientes(prev => prev.map(x => x.id === c.id ? c : x))
+            } else {
+              setClientes(prev => [...prev, c].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+            }
+            setShowNuevo(false)
+            setEditingCliente(null)
+          }}
+          onClose={() => { setShowNuevo(false); setEditingCliente(null) }}
         />
       )}
     </div>
@@ -709,4 +736,4 @@ export default function DashboardMaestros({ clientes, transportes, userRol }: Pr
   )
 }
 
-export { ModalNuevoCliente, ModalNuevoTransporte }
+export { ModalCliente, ModalNuevoTransporte }

@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
   if (!await verifySuperadmin(request)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
-  const { nombre, email, telefono } = await request.json()
+  const { nombre, email, telefono, emails_adicionales } = await request.json()
   const { data, error } = await makeAdminClient()
     .from('clientes')
-    .insert({ nombre, email: email || null, telefono: telefono || null })
+    .insert({ nombre, email: email || null, telefono: telefono || null, emails_adicionales: emails_adicionales || null })
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

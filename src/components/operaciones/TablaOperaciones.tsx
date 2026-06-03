@@ -178,7 +178,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; interno: number | null } | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null; cliente: string | null; clienteEmail: string | null | 'loading' } | null>(null)
+  const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null; cliente: string | null; clienteEmail: string | null | 'loading'; clienteEmailsAdicionales: string[] | 'loading' } | null>(null)
   const [ccInput, setCcInput] = useState('')
   const [ccEmails, setCcEmails] = useState<string[]>([])
   const [ccError, setCcError] = useState('')
@@ -310,16 +310,20 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   }
 
   async function openMailModal(id: number, interno: number | null, cliente: string | null) {
-    setMailConfirmModal({ id, interno, cliente, clienteEmail: 'loading' })
+    setMailConfirmModal({ id, interno, cliente, clienteEmail: 'loading', clienteEmailsAdicionales: 'loading' })
     setCcEmails([])
     setCcInput('')
     setCcError('')
     if (cliente) {
       const supabase = createClient()
-      const { data } = await supabase.from('clientes').select('email').ilike('nombre', cliente).maybeSingle()
-      setMailConfirmModal(prev => prev ? { ...prev, clienteEmail: data?.email ?? null } : null)
+      const { data } = await supabase.from('clientes').select('email, emails_adicionales').ilike('nombre', cliente).maybeSingle()
+      setMailConfirmModal(prev => prev ? {
+        ...prev,
+        clienteEmail: data?.email ?? null,
+        clienteEmailsAdicionales: data?.emails_adicionales ?? [],
+      } : null)
     } else {
-      setMailConfirmModal(prev => prev ? { ...prev, clienteEmail: null } : null)
+      setMailConfirmModal(prev => prev ? { ...prev, clienteEmail: null, clienteEmailsAdicionales: [] } : null)
     }
   }
 
@@ -1465,7 +1469,21 @@ const sorted = [...filtradas].sort((a, b) => {
               </div>
             </div>
 
-            {/* CC */}
+            {/* Emails adicionales del cliente (desde Maestros) */}
+            {mailConfirmModal.clienteEmailsAdicionales !== 'loading' && mailConfirmModal.clienteEmailsAdicionales.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7158', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>Emails del cliente</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {mailConfirmModal.clienteEmailsAdicionales.map(email => (
+                    <div key={email} style={{ display: 'inline-flex', alignItems: 'center', background: '#F5F1EB', border: '1px solid #E8DFC5', borderRadius: 20, padding: '3px 10px', fontSize: 12, color: '#1F1B14' }}>
+                      {email}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CC temporales */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7158', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>CC / Destinatarios adicionales</div>
               {ccEmails.length > 0 && (
