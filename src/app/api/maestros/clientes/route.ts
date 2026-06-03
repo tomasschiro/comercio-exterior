@@ -59,10 +59,12 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
   const { id, ...updates } = await request.json()
+  console.log('[Clientes PUT] id:', id, '| updates:', JSON.stringify(updates))
   const { error } = await makeAdminClient()
     .from('clientes')
     .update(updates)
     .eq('id', id)
+  console.log('[Clientes PUT] Supabase error:', error)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

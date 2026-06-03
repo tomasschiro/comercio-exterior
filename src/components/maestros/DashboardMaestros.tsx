@@ -154,6 +154,7 @@ function ModalCliente({ initial, onSave, onClose, zIndex = 50 }: {
         telefono: form.telefono.trim() || null,
         emails_adicionales: emailsAd.length > 0 ? emailsAd : null,
       }
+      console.log('[ModalCliente] handleSave payload:', JSON.stringify(payload))
       if (initial) {
         await apiFetch('/api/maestros/clientes', 'PUT', { id: initial.id, ...payload })
         onSave({ ...initial, ...payload })
