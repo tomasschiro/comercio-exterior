@@ -148,11 +148,17 @@ function ModalCliente({ initial, onSave, onClose, zIndex = 50 }: {
     setLoading(true)
     setError('')
     try {
+      const pendingEmail = emailAdInput.trim()
+      const finalEmailsAd = (
+        pendingEmail && isValidEmailAddr(pendingEmail) && !emailsAd.includes(pendingEmail)
+          ? [...emailsAd, pendingEmail]
+          : emailsAd
+      ).slice(0, 2)
       const payload = {
         nombre: form.nombre.trim(),
         email: form.email.trim() || null,
         telefono: form.telefono.trim() || null,
-        emails_adicionales: emailsAd.length > 0 ? emailsAd : null,
+        emails_adicionales: finalEmailsAd.length > 0 ? finalEmailsAd : null,
       }
       console.log('[ModalCliente] handleSave payload:', JSON.stringify(payload))
       if (initial) {
