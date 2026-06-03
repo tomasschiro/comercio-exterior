@@ -178,7 +178,10 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; interno: number | null } | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null } | null>(null)
+  const [mailConfirmModal, setMailConfirmModal] = useState<{ id: number; interno: number | null; cliente: string | null; clienteEmail: string | null | 'loading' } | null>(null)
+  const [ccInput, setCcInput] = useState('')
+  const [ccEmails, setCcEmails] = useState<string[]>([])
+  const [ccError, setCcError] = useState('')
   const [sendingMail, setSendingMail] = useState(false)
   const [workspace, setWorkspace] = useState<'importacion' | 'exportacion' | 'todas'>('todas')
 
@@ -302,7 +305,41 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     setEditing({ id: op.id, field, value })
   }
 
-  async function enviarMailLiberacion(id: number): Promise<void> {
+  function isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  }
+
+  async function openMailModal(id: number, interno: number | null, cliente: string | null) {
+    setMailConfirmModal({ id, interno, cliente, clienteEmail: 'loading' })
+    setCcEmails([])
+    setCcInput('')
+    setCcError('')
+    if (cliente) {
+      const supabase = createClient()
+      const { data } = await supabase.from('clientes').select('email').ilike('nombre', cliente).maybeSingle()
+      setMailConfirmModal(prev => prev ? { ...prev, clienteEmail: data?.email ?? null } : null)
+    } else {
+      setMailConfirmModal(prev => prev ? { ...prev, clienteEmail: null } : null)
+    }
+  }
+
+  function closeMailModal() {
+    setMailConfirmModal(null)
+    setCcEmails([])
+    setCcInput('')
+    setCcError('')
+  }
+
+  function addCcEmail() {
+    const trimmed = ccInput.trim()
+    if (!isValidEmail(trimmed)) { setCcError('Email inválido'); return }
+    if (ccEmails.includes(trimmed)) { setCcError('Ya fue agregado'); return }
+    setCcEmails(prev => [...prev, trimmed])
+    setCcInput('')
+    setCcError('')
+  }
+
+  async function enviarMailLiberacion(id: number, cc: string[]): Promise<void> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
@@ -310,7 +347,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     await fetch('/api/operaciones/liberar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, ccEmails: cc }),
     })
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, mail_enviado: true } : op))
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, mail_enviado: true } : null)
@@ -357,7 +394,7 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
       setCellStatus(id, field, 'success')
       setTimeout(() => setCellStatus(id, field, null), 1200)
       if (field === 'liberacion' && parsed !== null) {
-        setMailConfirmModal({ id, interno: oldOp.interno })
+        void openMailModal(id, oldOp.interno, oldOp.cliente ?? null)
       }
     }
   }
@@ -1295,7 +1332,7 @@ const sorted = [...filtradas].sort((a, b) => {
                             </button>
                             {op.liberacion && (
                               <button tabIndex={-1}
-                                onClick={() => { if (!(op.mail_enviado ?? false)) setMailConfirmModal({ id: op.id, interno: op.interno }) }}
+                                onClick={() => { if (!(op.mail_enviado ?? false)) void openMailModal(op.id, op.interno, op.cliente ?? null) }}
                                 title={(op.mail_enviado ?? false) ? 'Mail enviado' : 'Enviar notificación'}
                                 style={{ padding: 5, border: 'none', background: 'transparent', cursor: (op.mail_enviado ?? false) ? 'default' : 'pointer', color: (op.mail_enviado ?? false) ? '#16A34A' : '#9CA3AF', borderRadius: 4, display: 'flex', alignItems: 'center', transition: 'color 100ms' }}>
                                 <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1395,23 +1432,77 @@ const sorted = [...filtradas].sort((a, b) => {
 
       {mailConfirmModal && (
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)' }} onClick={() => !sendingMail && setMailConfirmModal(null)} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 70, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 12, boxShadow: '0 8px 32px rgba(31,27,20,.18)', padding: '24px 28px', width: 360 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)' }} onClick={() => !sendingMail && closeMailModal()} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 70, background: '#FFFFFF', border: '1px solid #E8DFC5', borderRadius: 12, boxShadow: '0 8px 32px rgba(31,27,20,.18)', padding: '24px 28px', width: 420 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg style={{ width: 18, height: 18, color: '#1D4ED8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#1F1B14' }}>¿Notificar al cliente?</h3>
                 <p style={{ margin: 0, fontSize: 13, color: '#4A4332', lineHeight: 1.5 }}>
-                  Operación <strong>#{mailConfirmModal.interno ?? mailConfirmModal.id}</strong> fue liberada. ¿Deseas enviar la notificación al cliente?
+                  Operación <strong>#{mailConfirmModal.interno ?? mailConfirmModal.id}</strong> fue liberada.
                 </p>
               </div>
             </div>
+
+            {/* Primary recipient */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7158', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>Destinatario principal</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 10px', background: '#F5F1EB', borderRadius: 8, fontSize: 13 }}>
+                <svg style={{ width: 13, height: 13, color: '#7A7158', flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {mailConfirmModal.clienteEmail === 'loading' ? (
+                  <span style={{ color: '#ADA482', fontStyle: 'italic' }}>Buscando email…</span>
+                ) : mailConfirmModal.clienteEmail ? (
+                  <span style={{ color: '#1F1B14' }}>{mailConfirmModal.clienteEmail}</span>
+                ) : (
+                  <span style={{ color: '#ADA482', fontStyle: 'italic' }}>Sin email registrado para este cliente</span>
+                )}
+              </div>
+            </div>
+
+            {/* CC */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7158', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>CC / Destinatarios adicionales</div>
+              {ccEmails.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {ccEmails.map(email => (
+                    <div key={email} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '3px 6px 3px 10px', fontSize: 12, color: '#1E40AF' }}>
+                      <span style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>
+                      <button onClick={() => setCcEmails(prev => prev.filter(e => e !== email))} disabled={sendingMail}
+                        style={{ width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(30,64,175,0.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0, color: '#1E40AF', fontSize: 14, lineHeight: 1, fontFamily: 'inherit' }}>
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ccEmails.length < 2 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="email"
+                    value={ccInput}
+                    onChange={e => { setCcInput(e.target.value); setCcError('') }}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCcEmail() } }}
+                    placeholder="email@ejemplo.com"
+                    disabled={sendingMail}
+                    style={{ flex: 1, padding: '7px 10px', fontSize: 13, border: `1px solid ${ccError ? '#EF4444' : '#E8DFC5'}`, borderRadius: 6, outline: 'none', fontFamily: 'inherit', color: '#1F1B14', background: sendingMail ? '#F9F6EF' : '#FFFFFF' }}
+                  />
+                  <button onClick={addCcEmail} disabled={sendingMail || !ccInput.trim()}
+                    style={{ width: 34, height: 34, borderRadius: 6, border: '1px solid #E8DFC5', background: '#FFFFFF', cursor: sendingMail || !ccInput.trim() ? 'default' : 'pointer', color: sendingMail || !ccInput.trim() ? '#ADA482' : '#1F1B14', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20, lineHeight: 1, fontFamily: 'inherit' }}>
+                    +
+                  </button>
+                </div>
+              )}
+              {ccError && <div style={{ marginTop: 5, fontSize: 11, color: '#EF4444' }}>{ccError}</div>}
+            </div>
+
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setMailConfirmModal(null)} disabled={sendingMail}
+              <button onClick={closeMailModal} disabled={sendingMail}
                 style={{ padding: '7px 16px', fontSize: 13, border: '1px solid #E8DFC5', borderRadius: 6, background: '#FFFFFF', color: '#4A4332', cursor: sendingMail ? 'default' : 'pointer', fontFamily: 'inherit' }}
                 onMouseEnter={e => { if (!sendingMail) e.currentTarget.style.background = '#F5F1EB' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF' }}
@@ -1421,9 +1512,9 @@ const sorted = [...filtradas].sort((a, b) => {
               <button
                 onClick={async () => {
                   setSendingMail(true)
-                  await enviarMailLiberacion(mailConfirmModal.id)
+                  await enviarMailLiberacion(mailConfirmModal.id, ccEmails)
                   setSendingMail(false)
-                  setMailConfirmModal(null)
+                  closeMailModal()
                 }}
                 disabled={sendingMail}
                 style={{ padding: '7px 16px', fontSize: 13, border: 'none', borderRadius: 6, background: sendingMail ? '#3B5FA0' : '#1D4ED8', color: '#FFFFFF', cursor: sendingMail ? 'default' : 'pointer', fontWeight: 500, fontFamily: 'inherit', minWidth: 100 }}

@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = (await req.json()) as { id: number }
+    const { id, ccEmails = [] } = (await req.json()) as { id: number; ccEmails?: string[] }
 
     const admin = createClient(url, serviceKey)
 
@@ -124,9 +124,10 @@ export async function POST(req: NextRequest) {
       const resendKey = process.env.RESEND_API_KEY
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
         const resend = new Resend(resendKey)
+        const validCc = (ccEmails as string[]).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 2)
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
-          to: [clientEmail],
+          to: [clientEmail, ...validCc],
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
           html: buildEmailHtml({ interno: op.interno, liberacion: op.liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho, tipo: op.tipo }),
         })
