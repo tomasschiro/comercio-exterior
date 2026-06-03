@@ -338,21 +338,30 @@ export default function TablaOperaciones({ userEmail, userId, userRol }: Props) 
     const trimmed = ccInput.trim()
     if (!isValidEmail(trimmed)) { setCcError('Email inválido'); return }
     if (ccEmails.includes(trimmed)) { setCcError('Ya fue agregado'); return }
-    setCcEmails(prev => [...prev, trimmed])
+    setCcEmails(prev => {
+      const next = [...prev, trimmed]
+      console.log('[Mail] CC agregado:', trimmed, '| cc actual:', next)
+      return next
+    })
     setCcInput('')
     setCcError('')
   }
 
   async function enviarMailLiberacion(id: number, cc: string[]): Promise<void> {
+    console.log('[Mail] enviarMailLiberacion → id:', id, '| cc:', cc)
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
     if (!token) return
-    await fetch('/api/operaciones/liberar', {
+    const body = { id, ccEmails: cc }
+    console.log('[Mail] POST /api/operaciones/liberar body:', body)
+    const res = await fetch('/api/operaciones/liberar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id, ccEmails: cc }),
+      body: JSON.stringify(body),
     })
+    const json = await res.json().catch(() => ({}))
+    console.log('[Mail] Respuesta API:', json)
     setOperaciones(prev => prev.map(op => op.id === id ? { ...op, mail_enviado: true } : op))
     if (panelOp?.id === id) setPanelOp(prev => prev ? { ...prev, mail_enviado: true } : null)
   }
@@ -1529,6 +1538,7 @@ const sorted = [...filtradas].sort((a, b) => {
               </button>
               <button
                 onClick={async () => {
+                  console.log('[Mail] Enviar clickeado | clienteEmail:', mailConfirmModal.clienteEmail, '| clienteEmailsAd:', mailConfirmModal.clienteEmailsAdicionales, '| ccEmails:', ccEmails)
                   setSendingMail(true)
                   await enviarMailLiberacion(mailConfirmModal.id, ccEmails)
                   setSendingMail(false)

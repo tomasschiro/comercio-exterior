@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { id, ccEmails = [] } = (await req.json()) as { id: number; ccEmails?: string[] }
+    console.log('[Liberar API] Recibido → id:', id, '| ccEmails:', ccEmails)
 
     const admin = createClient(url, serviceKey)
 
@@ -121,18 +122,23 @@ export async function POST(req: NextRequest) {
 
       const clientEmail = clientData?.email ?? null
       const clientEmailsAd: string[] = clientData?.emails_adicionales ?? []
+      console.log('[Liberar API] Cliente:', op.cliente, '| email:', clientEmail, '| emails_adicionales:', clientEmailsAd)
 
       const resendKey = process.env.RESEND_API_KEY
       if (clientEmail && resendKey && resendKey !== 'placeholder') {
         const resend = new Resend(resendKey)
         const validCc = (ccEmails as string[]).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 2)
+        const toList = [clientEmail, ...clientEmailsAd, ...validCc]
+        console.log('[Liberar API] Enviando a:', toList)
         await resend.emails.send({
           from: 'RMS Comercio Exterior <info@rodolfoschiro.com.ar>',
-          to: [clientEmail, ...clientEmailsAd, ...validCc],
+          to: toList,
           subject: `${op.interno ?? '—'} — Liberación de mercadería — Factura ${op.factura ?? '—'}`,
           html: buildEmailHtml({ interno: op.interno, liberacion: op.liberacion, factura: op.factura, crt: op.crt, despacho: op.despacho, tipo: op.tipo }),
         })
         emailSent = true
+      } else {
+        console.log('[Liberar API] No se envía email — clientEmail:', clientEmail, '| resendKey configurado:', !!(resendKey && resendKey !== 'placeholder'))
       }
     }
 
